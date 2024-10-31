@@ -1,6 +1,34 @@
 # cod
 
-A tiny C source code package manager tailered to hobby kernel development.
+Hobby kernel development is so miserable that everyone has to invent their own wheel, because there is no package manager.
+
+`cod` is a tiny C source code package manager tailored to hobby kernel development:
+
+- Works across Windows, MacOS and Linux
+- Easy to Install
+- Install dependency automatically
+
+For example
+
+```c
+#include <awesome.h>
+
+void kernel_main() {
+  awesome_main();
+}
+```
+
+At compiling, `cod` will try to find a package which provdes file `awesome.h`.
+
+At linking, `cod` will try to find a package provides symbol `awesome_main`.
+
+Now, let's reinvent the wheel, once and for all.
+
+## Installation
+
+```
+pip install git+https://github.com/tanhaoqiang/cod.git
+```
 
 ## License
 
