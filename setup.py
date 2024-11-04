@@ -28,5 +28,5 @@ setup(
     author_email = '',
 
     packages = ['cod'],
-    install_requires = ['ninja', 'ziglang', 'solv']
+    install_requires = ['ninja', 'ziglang']
 )
