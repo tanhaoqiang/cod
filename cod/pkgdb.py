@@ -5,7 +5,7 @@ from pathlib import PurePosixPath
 import json
 import solv
 
-def add_pkg(repo, spec):
+def add_pkg(repo, path, spec, vendor):
     pool = repo.pool
     repodata = repo.first_repodata()
 
@@ -14,12 +14,15 @@ def add_pkg(repo, spec):
     pkg.evr = "{epoch}:{version}-{release}".format(
         epoch=0,version=spec["version"],release="1")
     pkg.arch = 'noarch'
+    pkg.vendor = vendor
 
     selfprovides = pool.rel2id(pkg.nameid, pkg.evrid, solv.REL_EQ)
     pkg.add_deparray(solv.SOLVABLE_PROVIDES, selfprovides)
 
     for p in spec['provides']:
         pkg.add_provides(pool.Dep(p))
+
+    repodata.set_location(pkg.id, 0, path.as_posix())
 
     for name in spec['filelist']:
         path = PurePosixPath('/') / name
@@ -28,19 +31,50 @@ def add_pkg(repo, spec):
 
 class PackageDatabase:
 
-    def __init__(self):
+    def __init__(self, path, repos):
         self.pool = solv.Pool()
+        self.repos = repos
+        for name, p in repos.items():
+            self.add_repo(name, p)
+
+        repo = self.pool.add_repo("installed")
+        repo.appdata = path
+        repodata = repo.add_repodata()
+
+        try:
+            f = (path / ".installed").open()
+        except FileNotFoundError:
+            pass
+        else:
+            with f:
+                installed = json.load(f)
+
+            for name, p in installed:
+                with (repos[name] / p).open() as f:
+                    spec = json.load(f)
+                    add_pkg(repo, PurePosixPath(p), spec, name)
+
+        self.pool.installed = repo
+        repodata.internalize()
 
     def add_repo(self, name, path):
         repo = self.pool.add_repo(name)
+        repo.appdata = path
         repodata = repo.add_repodata()
         for name in path.glob("*/build/*.cod"):
             with name.open() as f:
                 spec = json.load(f)
-                add_pkg(repo, spec)
+                add_pkg(repo, name.relative_to(path), spec, repo.name)
         repodata.internalize()
 
-    def solve_files(self, filelist):
+    def _get_installed(self):
+        return [[solvable.vendor,solvable.lookup_location()[0]]
+                for solvable in self.pool.installed.solvables_iter()]
+
+    def get_installed(self):
+        return [(self.repos[vendor]/path) for vendor, path in self._get_installed()]
+
+    def install_from_filelist(self, filelist):
         self.pool.addfileprovides()
         self.pool.createwhatprovides()
         jobs = []
@@ -49,7 +83,9 @@ class PackageDatabase:
                 (PurePosixPath('/') / name).as_posix(),
                 solv.Selection.SELECTION_FILELIST).jobs(
                     solv.Job.SOLVER_INSTALL)
+        self.install(jobs)
 
+    def install(self, jobs):
         solver = self.pool.Solver()
         problems = solver.solve(jobs)
         if problems:
@@ -60,7 +96,21 @@ class PackageDatabase:
 
         trans = solver.transaction()
         if trans.isempty():
-            print("Nothing to do.")
-        else:
-            newpkgs = trans.newsolvables()
-            print(newpkgs)
+            return
+
+        installed = self.pool.installed
+
+        for solvable in trans.steps():
+            repo_path = solvable.repo.appdata
+            path, _ = solvable.lookup_location()
+
+            with (repo_path / path).open() as f:
+                spec = json.load(f)
+                add_pkg(installed, PurePosixPath(path), spec, solvable.vendor)
+
+        repodata = installed.first_repodata()
+        repodata.internalize()
+
+        installed.appdata.mkdir(exist_ok=True)
+        with (installed.appdata / ".installed").open("w") as f:
+            json.dump(self._get_installed(), f)

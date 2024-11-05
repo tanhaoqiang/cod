@@ -48,13 +48,13 @@ class Config:
         self.kind = parser['cod']['kind']
 
         if parser.has_section('repo'):
-            self.db = PackageDatabase()
-            self.db.add_repo(
-                parser['repo']['name'],
-                self.rootdir / parser['repo']['path'])
+            self.db = PackageDatabase(
+                self.builddir,
+                {parser['repo']['name']: self.rootdir / parser['repo']['path']})
 
-    def get_cfiles(self):
-        return [f.relative_to(self.srcdir) for f in self.srcdir.rglob("*.c")]
+    def get_cfiles(self, srcdir=None):
+        srcdir = srcdir or self.srcdir
+        return [f.relative_to(srcdir) for f in srcdir.rglob("*.c")]
 
     def get_hfiles(self):
         return [f.relative_to(self.includedir) for f in self.includedir.rglob("*.h")]
@@ -93,6 +93,53 @@ class Config:
                 [ (self.includedir / path).relative_to(self.builddir, walk_up=True).as_posix()
                   for path in hfiles ])
 
+    def generate_exe_ninja(self, packages):
+        cfiles = self.get_cfiles()
+
+        self.builddir.mkdir(exist_ok=True)
+
+        with (self.builddir / "build.ninja").open("w") as f:
+            ninja = NinjaWriter(f)
+            includedirs = [self.includedir.relative_to(self.builddir, walk_up=True)]
+
+            for package in packages:
+                includedirs.append((package.parent.parent / "include").relative_to(self.builddir, walk_up=True))
+                (self.builddir / package.stem).mkdir(exist_ok=True)
+
+            ninja.variable('python', [sys.executable])
+            ninja.variable('zig', ["$python", "-mziglang"])
+            ninja.variable('pkg', ["$python", "-mcod._pkg"])
+            ninja.variable('cc', ["$zig", "cc"])
+            ninja.variable('ar', ["$zig", "ar"])
+            ninja.variable('cflags', [a for d in includedirs for a in ["-I", d.as_posix()]])
+
+            ninja.rule('cc', ["$cc", "$cflags", "-c", "$in", "-o", "$out"])
+            ninja.rule('ar', ["$ar", "crs", "$out", "$in"])
+            ninja.rule('ld', ["$cc", "$in", "-o", "$out"])
+
+            (self.builddir / self.name).mkdir(exist_ok=True)
+            for path in cfiles:
+                obj = path.with_suffix(".o")
+                src = (self.srcdir/path).relative_to(self.builddir, walk_up=True)
+                ninja.build([f"{self.name}/{obj.as_posix()}"], "cc", [src.as_posix()])
+
+            for package in packages:
+                srcdir = package.parent.parent / "src"
+                pcfiles = self.get_cfiles(srcdir)
+                for path in pcfiles:
+                    obj = path.with_suffix(".o")
+                    src = (srcdir/path).relative_to(self.builddir, walk_up=True)
+                    ninja.build([f"{package.stem}/{obj.as_posix()}"], "cc", [src.as_posix()])
+                ninja.build([f"lib{package.stem}.a"], "ar", [f"{package.stem}/{path.with_suffix('.o').as_posix()}" for path in pcfiles])
+
+            ninja.build([f"{self.name}.exe"], "ld", [
+                f"{self.name}/{path.with_suffix('.o').as_posix()}"
+                for path in cfiles
+            ] + [
+                f"lib{package.stem}.a"
+                for package in packages
+            ])
+
     def get_missing_headers(self):
         cfiles = self.get_cfiles()
         dep = check_output(
@@ -111,7 +158,9 @@ class Config:
             check_call([sys.executable, "-mninja"], cwd=self.builddir)
         elif self.kind == 'exe':
             files = self.get_missing_headers()
-            self.db.solve_files(files)
+            self.db.install_from_filelist(files)
+            self.generate_exe_ninja(self.db.get_installed())
+            check_call([sys.executable, "-mninja"], cwd=self.builddir)
         else:
             assert False
 
