@@ -10,45 +10,7 @@ on:
     - edited
 
 jobs:
-  index:
-    runs-on: 'ubuntu-latest'
-    steps:
-    - name: Download libsolv from github release
-      uses: robinraju/release-downloader@v1
-      with:
-        repository: 'tanhaoqiang/libsolv'
-        latest: true
-        fileName: '*.whl'
-        out-file-path: pypi/solv
-
-    - run: |
-        cat > pypi/index.html <<EOF
-        <!DOCTYPE html>
-        <html><body><a href="solv/">solv</a></body></html>
-        EOF
-
-        cat >> pypi/solv/index.html <<EOF
-        <!DOCTYPE html>
-        <html><body>
-        EOF
-
-        for name in $(ls -1 pypi/solv/*.whl | xargs -I {} basename {})
-        do
-          echo "<a href="${name}#sha256=$(sha256sum pypi/solv/${name} | cut -d " " -f 1)">${name}</a>" >> pypi/solv/index.html
-        done
-
-        cat >> pypi/solv/index.html <<EOF
-        </body></html>
-        EOF
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: pypi-solv
-        path: ./pypi/
-
   ci:
-    needs:
-    - index
     strategy:
       matrix:
         os:
@@ -61,16 +23,11 @@ jobs:
     runs-on: '${{ matrix.os }}'
 
     steps:
-    - uses: actions/download-artifact@v4
-      with:
-        name: pypi-solv
-        path: pypi
-
     - uses: actions/setup-python@v5
       with:
         python-version: '${{ matrix.python }}'
 
-    - run: pip install -i "${{ github.workspace }}/pypi" solv
+    - run: pip install -i "https://tanhaoqiang.github.io/simple" solv
 
     - name: Checkout
       uses: actions/checkout@v4
