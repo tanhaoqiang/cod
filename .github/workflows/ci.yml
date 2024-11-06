@@ -113,3 +113,10 @@ jobs:
         cod install fc1
         cod build
         assert_fail cod install fc2
+
+        cd ../hd-lib1
+        cod build
+        cd ../hd-lib2
+        cod build
+        cd ../hd-bin
+        cod build

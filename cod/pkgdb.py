@@ -19,14 +19,18 @@ def add_pkg(repo, path, spec, vendor):
     selfprovides = pool.rel2id(pkg.nameid, pkg.evrid, solv.REL_EQ)
     pkg.add_deparray(solv.SOLVABLE_PROVIDES, selfprovides)
 
-    for p in spec['provides']:
+    for r in spec.get('requires', []):
+        req = pool.str2id(r)
+        pkg.add_deparray(solv.SOLVABLE_REQUIRES, req)
+
+    for p in spec.get('provides', []):
         dep = pool.str2id(p)
         pkg.add_deparray(solv.SOLVABLE_PROVIDES, dep)
         pkg.add_deparray(solv.SOLVABLE_CONFLICTS, dep)
 
     repodata.set_location(pkg.id, 0, path.as_posix())
 
-    for name in spec['filelist']:
+    for name in spec.get('filelist', []):
         dep = pool.str2id(f"<{name}>")
         pkg.add_deparray(solv.SOLVABLE_PROVIDES, dep)
         pkg.add_deparray(solv.SOLVABLE_CONFLICTS, dep)

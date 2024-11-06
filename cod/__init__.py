@@ -8,6 +8,7 @@ from subprocess import run, check_call, check_output, PIPE
 import re
 import shlex
 import argparse
+import json
 from ninja.ninja_syntax import Writer as NinjaWriter
 from .pkgdb import PackageDatabase
 from .ar import parse_armap
@@ -37,7 +38,7 @@ def parse_dep(s):
 class Config:
 
     def __init__(self, rootdir=None):
-        self.rootdir = Path.cwd()
+        self.rootdir = Path.cwd() if rootdir is None else Path(rootdir)
         self.srcdir = self.rootdir / 'src'
         self.includedir = self.rootdir / 'include'
         self.builddir = self.rootdir / 'build'
@@ -105,14 +106,22 @@ class Config:
 
             if self.kind == 'lib':
                 hfiles = self.get_hfiles()
-                ninja.variable('pkg', ["$python", "-mcod._pkg"])
-                ninja.rule('pkg', ["$pkg", self.name, self.version, includedir.as_posix(), "$out", "$in"])
+                ninja.variable('pkg', ["$python", "-mcod", "_pack"])
+                ninja.rule('pkg', ["$pkg", str(self.rootdir)])
+
                 ninja.build(
                     [f"{self.name}.cod"],
                     "pkg",
-                    [f"lib{self.name}.a"] +
-                    [ (self.includedir / path).relative_to(self.builddir, walk_up=True).as_posix()
-                      for path in hfiles ])
+                    [],
+                    [f"lib{self.name}.a",
+                     (self.rootdir/"cod.ini").relative_to(self.builddir, walk_up=True).as_posix()
+                     ] + [
+                         (self.srcdir / path).relative_to(self.builddir, walk_up=True).as_posix()
+                         for path in cfiles
+                     ] + [
+                         (self.includedir / path).relative_to(self.builddir, walk_up=True).as_posix()
+                         for path in hfiles ])
+
             elif self.kind == 'exe':
                 ninja.rule('ld', ["$cc", "$in", "-o", "$out"])
                 ninja.build([f"{self.name}.exe"], "ld",
@@ -124,18 +133,30 @@ class Config:
 
     def get_missing_headers(self):
         cfiles = self.get_cfiles()
-        if not cfiles:
-            return []
-
-        dep = check_output(
-            [sys.executable, "-mziglang", "cc",
-             "-I", self.includedir.relative_to(self.srcdir, walk_up=True),
-             "-MM", "-MG"] + cfiles,
-            cwd=self.srcdir).decode()
-        return [
-            name
-            for name in parse_dep(dep)
-            if not (self.srcdir / name).exists()]
+        hfiles = self.get_hfiles()
+        deps = []
+        if cfiles:
+            cdep = check_output(
+                [sys.executable, "-mziglang", "cc",
+                 "-I", self.includedir.relative_to(self.srcdir, walk_up=True),
+                 "-MM", "-MG"] + cfiles,
+                cwd=self.srcdir).decode()
+            deps += [
+                name
+                for name in parse_dep(cdep)
+                if not (self.srcdir / name).exists() ]
+        if hfiles:
+            hdep = check_output(
+                [sys.executable, "-mziglang", "cc",
+                 "-I", self.includedir,
+                 "-MM", "-MG"] + hfiles,
+                cwd=self.includedir).decode()
+            deps += [
+                name
+                for name in parse_dep(hdep)
+                if not (self.includedir / name).exists()
+            ]
+        return deps
 
     def get_missing_symbols(self, packages):
         archives = [f"lib{self.name}.a"] + [f"lib{package.stem}.a" for package in packages ]
@@ -151,7 +172,6 @@ class Config:
                 defined.update(parse_armap(f))
 
         return list(undefined - defined)
-
 
     def build(self):
         files = self.get_missing_headers()
@@ -175,18 +195,36 @@ class Config:
     def install(self, packages):
         self.db.install_packages(packages)
 
+    def generate_package(self):
+        with open(self.builddir / f"lib{self.name}.a", "rb") as f:
+            symbols = parse_armap(f)
+        missing = self.get_missing_headers()
+        hfiles = self.get_hfiles()
+        with (self.builddir / f"{self.name}.cod").open("w") as f:
+            json.dump({
+                "name": self.name,
+                "version": self.version,
+                "requires": [f"<{h}>" for h in missing],
+                "provides": [f"({s})" for s in symbols],
+                "filelist": [h.as_posix() for h in hfiles],
+            }, f)
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command')
     parser_build = subparsers.add_parser('build')
     parser_install = subparsers.add_parser('install')
     parser_install.add_argument('package', nargs='+')
+    parser__pack = subparsers.add_parser('_pack', help='internal command')
+    parser__pack.add_argument('rootdir')
     args = parser.parse_args()
 
-    c = Config()
     if args.command == 'build':
-        c.build()
+        Config().build()
     elif args.command == 'install':
-        c.install(args.package)
+        Config().install(args.package)
+    elif args.command == '_pack':
+        Config(args.rootdir).generate_package()
     else:
         parser.print_help()
