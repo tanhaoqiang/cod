@@ -133,3 +133,22 @@ However, `zig cc -MM -MG -target x86_64-freestanding a.c` is fine
 ```makefile
 a.o: a.c stdio.h b.h c.h
 ```
+
+## Detect undefined symbol
+
+for example, we have `c.c`
+
+```c
+void f();
+
+int
+main() {
+  f();
+}
+```
+
+`ziglang cc -Wl,--no-undefined` would print
+
+```
+ld.lld: error: undefined symbol: f
+```
