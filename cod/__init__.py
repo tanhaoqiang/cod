@@ -86,7 +86,7 @@ class Config:
             ninja.variable('ar', ["$zig", "ar"])
             ninja.variable('cflags', [a for d in includedirs for a in ["-I", d.as_posix()]])
 
-            ninja.rule('cc', ["$cc", "$cflags", "-c", "$in", "-o", "$out"])
+            ninja.rule('cc', ["$cc", "$cflags", "-MD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('ar', ["$ar", "crs", "$out", "$in"])
 
             for path in cfiles:
