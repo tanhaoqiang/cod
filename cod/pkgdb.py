@@ -85,6 +85,17 @@ class PackageDatabase:
                     solv.Job.SOLVER_INSTALL)
         self.install(jobs)
 
+    def install_packages(self, packages):
+        self.pool.addfileprovides()
+        self.pool.createwhatprovides()
+        jobs = []
+        for name in packages:
+            jobs += self.pool.select(
+                name,
+                solv.Selection.SELECTION_PROVIDES).jobs(
+                    solv.Job.SOLVER_INSTALL)
+        self.install(jobs)
+
     def install(self, jobs):
         solver = self.pool.Solver()
         problems = solver.solve(jobs)

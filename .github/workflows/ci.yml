@@ -80,20 +80,23 @@ jobs:
     - shell: bash
       run: |
         cd examples/hello-lib
-        python -mcod
+        python -mcod build
 
         cd ../hello-bin
-        python -mcod
+        python -mcod build
 
         cd ../hc-lib1
-        python -mcod
+        python -mcod build
 
         cd ../hc-lib2
-        python -mcod
+        python -mcod build
 
         cd ../hc-bin
-        python -mcod && EXIT_CODE="$?" || EXIT_CODE="$?"
+        python -mcod build && EXIT_CODE="$?" || EXIT_CODE="$?"
         if [ "${EXIT_CODE}" == "0" ]
         then
           exit 1
         fi
+
+        python -mcod install hc1
+        python -mcod build

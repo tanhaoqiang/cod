@@ -5,8 +5,9 @@ from pathlib import Path
 import sys
 from configparser import ConfigParser
 from subprocess import check_call, check_output
-from ninja.ninja_syntax import Writer as NinjaWriter
 import shlex
+import argparse
+from ninja.ninja_syntax import Writer as NinjaWriter
 from .pkgdb import PackageDatabase
 
 def iter_lines(s):
@@ -164,6 +165,21 @@ class Config:
         else:
             assert False
 
+    def install(self, packages):
+        self.db.install_packages(packages)
+
 def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='command')
+    parser_build = subparsers.add_parser('build')
+    parser_install = subparsers.add_parser('install')
+    parser_install.add_argument('package', nargs='+')
+    args = parser.parse_args()
+
     c = Config()
-    c.build()
+    if args.command == 'build':
+        c.build()
+    elif args.command == 'install':
+        c.install(args.package)
+    else:
+        parser.print_help()
