@@ -18,6 +18,8 @@ def add_pkg(repo, path, spec, vendor):
 
     selfprovides = pool.rel2id(pkg.nameid, pkg.evrid, solv.REL_EQ)
     pkg.add_deparray(solv.SOLVABLE_PROVIDES, selfprovides)
+    selfobsoletes = pool.rel2id(pkg.nameid, pkg.evrid, solv.REL_LT)
+    pkg.add_deparray(solv.SOLVABLE_OBSOLETES, selfobsoletes)
 
     for r in spec.get('requires', []):
         req = pool.str2id(r)
