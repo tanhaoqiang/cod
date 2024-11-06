@@ -18,7 +18,7 @@ void kernel_main() {
 }
 ```
 
-At compiling, `cod` will try to find a package which provdes file `awesome.h`.
+At compiling, `cod` will try to find a package provides file `awesome.h`.
 
 At linking, `cod` will try to find a package provides symbol `awesome_main`.
 
@@ -28,6 +28,12 @@ Now, let's reinvent the wheel, once and for all.
 
 ```
 pip install git+https://github.com/tanhaoqiang/cod.git
+```
+
+Unfortunately, libsolv would segfault on MacOS, so wheel package is not uploaded to PyPI. Now to install libsolv, run this command:
+
+```
+pip install -i "https://tanhaoqiang.github.io/simple" solv
 ```
 
 ## License
