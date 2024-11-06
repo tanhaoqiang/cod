@@ -84,3 +84,16 @@ jobs:
 
         cd ../hello-bin
         python -mcod
+
+        cd ../hc-lib1
+        python -mcod
+
+        cd ../hc-lib2
+        python -mcod
+
+        cd ../hc-bin
+        python -mcod && EXIT_CODE="$?" || EXIT_CODE="$?"
+        if [ "${EXIT_CODE}" == "0" ]
+        then
+          exit 1
+        fi

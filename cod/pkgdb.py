@@ -92,7 +92,16 @@ class PackageDatabase:
             for problem in problems:
                 print("Problem %d/%d:" % (problem.id, len(problems)))
                 print(problem)
-            return
+            assert False
+
+        if solver.alternatives_count() > 0:
+            print(f'Alternatives exist:')
+            for alt in solver.alternatives():
+                print(f" {alt}")
+                for i, c in enumerate(alt.choices()):
+                    print(f"  {i}: {c}")
+            print('Install one of the choices to proceed')
+            exit(1)
 
         trans = solver.transaction()
         if trans.isempty():
