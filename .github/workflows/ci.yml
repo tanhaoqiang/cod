@@ -79,43 +79,37 @@ jobs:
 
     - shell: bash
       run: |
+        assert_fail() {
+          "$@" && EXIT_CODE="$?" || EXIT_CODE="$?"
+          if [ "${EXIT_CODE}" == "0" ]
+          then
+            exit 1
+          fi
+        }
+
         cd examples/hello-lib
         python -mcod build
-
         cd ../hello-bin
         python -mcod build
 
         cd ../hc-lib1
         python -mcod build
-
         cd ../hc-lib2
         python -mcod build
-
         cd ../hc-bin
-        python -mcod build && EXIT_CODE="$?" || EXIT_CODE="$?"
-        if [ "${EXIT_CODE}" == "0" ]
-        then
-          exit 1
-        fi
-
+        assert_fail python -mcod build
         python -mcod install hc1
         python -mcod build
+        assert_fail python -mcod install hc2
 
         cd ../fc-headers
         python -mcod build
-
         cd ../fc-lib1
         python -mcod build
-
         cd ../fc-lib2
         python -mcod build
-
         cd ../fc-bin
-        python -mcod build && EXIT_CODE="$?" || EXIT_CODE="$?"
-        if [ "${EXIT_CODE}" == "0" ]
-        then
-          exit 1
-        fi
-
+        assert_fail python -mcod build
         python -mcod install fc1
         python -mcod build
+        assert_fail python -mcod install fc2

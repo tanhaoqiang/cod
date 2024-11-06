@@ -20,11 +20,17 @@ def add_pkg(repo, path, spec, vendor):
     pkg.add_deparray(solv.SOLVABLE_PROVIDES, selfprovides)
 
     for p in spec['provides']:
-        pkg.add_provides(pool.Dep(p))
+        dep = pool.str2id(p)
+        pkg.add_deparray(solv.SOLVABLE_PROVIDES, dep)
+        pkg.add_deparray(solv.SOLVABLE_CONFLICTS, dep)
 
     repodata.set_location(pkg.id, 0, path.as_posix())
 
     for name in spec['filelist']:
+        dep = pool.str2id(f"<{name}>")
+        pkg.add_deparray(solv.SOLVABLE_PROVIDES, dep)
+        pkg.add_deparray(solv.SOLVABLE_CONFLICTS, dep)
+
         path = PurePosixPath('/') / name
         dirid = repodata.str2dir(path.parent.as_posix())
         repodata.add_dirstr(pkg.id, solv.SOLVABLE_FILELIST, dirid, path.name)
@@ -79,9 +85,13 @@ class PackageDatabase:
         self.pool.createwhatprovides()
         jobs = []
         for name in filelist:
+            # jobs += self.pool.select(
+            #     (PurePosixPath('/') / name).as_posix(),
+            #     solv.Selection.SELECTION_FILELIST).jobs(
+            #         solv.Job.SOLVER_INSTALL)
             jobs += self.pool.select(
-                (PurePosixPath('/') / name).as_posix(),
-                solv.Selection.SELECTION_FILELIST).jobs(
+                f"<{name}>",
+                solv.Selection.SELECTION_PROVIDES).jobs(
                     solv.Job.SOLVER_INSTALL)
         self.install(jobs)
 
@@ -112,9 +122,8 @@ class PackageDatabase:
         problems = solver.solve(jobs)
         if problems:
             for problem in problems:
-                print("Problem %d/%d:" % (problem.id, len(problems)))
-                print(problem)
-            assert False
+                print("Problem %d/%d:" % (problem.id, len(problems)), problem)
+            exit(1)
 
         if solver.alternatives_count() > 0:
             print(f'Alternatives exist:')

@@ -143,7 +143,7 @@ class Config:
         defined = set()
 
         for name in archives:
-            proc = run([sys.executable, "-mziglang", "cc", "-Wl,--no-undefined", f"{name}.a"], stderr=PIPE, text=True, cwd=self.builddir)
+            proc = run([sys.executable, "-mziglang", "cc", "-Wl,--no-undefined", name], stderr=PIPE, text=True, cwd=self.builddir)
             if proc.returncode != 0:
                 symbols = re.findall(r'^ld.lld: error: undefined symbol: (\S+)', proc.stderr, re.MULTILINE)
                 undefined.update(symbols)
@@ -171,7 +171,6 @@ class Config:
             check_call([sys.executable, "-mninja", f"{self.name}.exe"], cwd=self.builddir)
         else:
             assert False
-
 
     def install(self, packages):
         self.db.install_packages(packages)
