@@ -88,28 +88,28 @@ jobs:
         }
 
         cd examples/hello-lib
-        python -mcod build
+        cod build
         cd ../hello-bin
-        python -mcod build
+        cod build
 
         cd ../hc-lib1
-        python -mcod build
+        cod build
         cd ../hc-lib2
-        python -mcod build
+        cod build
         cd ../hc-bin
-        assert_fail python -mcod build
-        python -mcod install hc1
-        python -mcod build
-        assert_fail python -mcod install hc2
+        assert_fail cod build
+        cod install hc1
+        cod build
+        assert_fail cod install hc2
 
         cd ../fc-headers
-        python -mcod build
+        cod build
         cd ../fc-lib1
-        python -mcod build
+        cod build
         cd ../fc-lib2
-        python -mcod build
+        cod build
         cd ../fc-bin
-        assert_fail python -mcod build
-        python -mcod install fc1
-        python -mcod build
-        assert_fail python -mcod install fc2
+        assert_fail cod build
+        cod install fc1
+        cod build
+        assert_fail cod install fc2

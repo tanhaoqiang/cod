@@ -28,5 +28,9 @@ setup(
     author_email = '',
 
     packages = ['cod'],
+    entry_points={
+        'console_scripts':
+        [ 'cod = cod:main' ]
+    },
     install_requires = ['ninja', 'ziglang']
 )
