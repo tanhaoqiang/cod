@@ -1,5 +1,8 @@
 *~
 *.egg-info
 venv/
-build/
 __pycache__/
+.cod/
+cod.lock
+*.o
+*.a

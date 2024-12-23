@@ -147,8 +147,48 @@ main() {
 }
 ```
 
-`ziglang cc -Wl,--no-undefined` would print
+`zig cc` would print
 
 ```
 ld.lld: error: undefined symbol: f
+```
+
+undefined symbol `g` in `d.c`
+
+```c
+void g();
+
+void
+f() {
+}
+
+void
+h() {
+  g();
+}
+```
+
+undefined symbol `j` in `e.c`
+
+```
+void j();
+
+void
+i() {
+  j();
+}
+```
+
+create archive file
+
+```
+zig cc -c -o d.o d.c
+zig cc -c -o e.o e.c
+zig ar rcs lib.a d.o e.o
+```
+
+`zig cc c.c lib.a` would only print
+
+```
+ld.lld: error: undefined symbol: g
 ```

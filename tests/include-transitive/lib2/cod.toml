@@ -1,0 +1,7 @@
+[package]
+name = "lib2"
+version = "1.0"
+
+[repo.test]
+type = "local"
+path = ".."

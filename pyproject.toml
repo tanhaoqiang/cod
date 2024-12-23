@@ -1,0 +1,38 @@
+[project]
+name = "cod"
+version = "0.0.1"
+license = {text = "AGPL-3.0-only"}
+authors = [{name="taohaoqiang"}]
+description = "C source code package manager"
+requires-python = ">=3.12"
+classifiers = [
+    "Topic :: Software Development :: Build Tools",
+    "Development Status :: 1 - Planning",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS :: MacOS X",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+  "ninja",
+  "ziglang",
+]
+
+[project.urls]
+Homepage = "https://github.com/tanhaoqiang/cod"
+
+[project.entry-points."cod.repos"]
+local = "cod.local_repo:LocalRepo"
+
+[project.scripts]
+cod = "cod:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.ld"]
