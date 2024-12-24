@@ -80,6 +80,9 @@ class Lock:
 
     @contextmanager
     def __call__(self, profile_name, save=True):
+        arch = profile_name.rsplit(".", 1)[1]
+        self.pool.setarch(arch)
+
         if profile_name not in self.profiles:
             r = self.pool.add_repo(f"profile.{profile_name}")
             r.add_repodata()

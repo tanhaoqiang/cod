@@ -1,0 +1,8 @@
+[package]
+name = "lib"
+version = "1.0"
+arch = ["x86_64"]
+
+[repo.test]
+type = "local"
+path = ".."

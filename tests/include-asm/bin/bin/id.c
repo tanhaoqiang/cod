@@ -1,7 +1,6 @@
-#include <sa.h>
+#include <asm/ia.h>
 
 int
 main() {
-  sa();
   return 0;
 }

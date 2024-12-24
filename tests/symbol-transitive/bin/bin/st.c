@@ -3,4 +3,5 @@
 int
 main() {
   st2();
+  return 0;
 }

@@ -21,31 +21,24 @@ def iter_lines(s):
     if full:
         yield full
 
-def parse_dep(s):
+def get_include_deps(includedirs, f):
+    argv = [sys.executable, "-mziglang", "cc", "-MM", "-MG"]
+    argv.extend(f"-I{i}" for i in includedirs)
+    s = check_output(argv + [f], cwd = f.parent).decode()
+
     for line in iter_lines(s):
         parts = shlex.split(line, comments=True)
         if not parts:
             continue
         for name in parts[1:]:
-            yield name.replace('$$', '$')
+            name = name.replace('$$', '$')
+            if not (f.parent / name).exists():
+                yield name
 
-def get_include_deps(workdir, includedir, files):
-    if not files:
-        return []
-
-    deps = []
-    for name in files:
-        dep = check_output(
-            [sys.executable, "-mziglang", "cc",
-             "-I", includedir.relative_to(workdir, walk_up=True),
-             "-MM", "-MG", name],
-            cwd = workdir).decode()
-        deps.extend(parse_dep(dep))
-    return [name for name in deps if not (workdir / name).exists()]
-
-def get_symbol_deps(workdir, obj):
+def get_symbol_deps(workdir, arch, obj):
     script = Path(__file__).parent / "always-fail.ld"
     proc = run(
-        [sys.executable, "-mziglang", "cc", f"-Wl,--script={script}", obj],
+        [sys.executable, "-mziglang", "cc", f"--target={arch}-freestanding",
+         f"-Wl,--script={script}", obj],
         stderr=PIPE, text=True, cwd=workdir)
     return re.findall(r': error: undefined symbol: (\S+)$', proc.stderr, re.MULTILINE)

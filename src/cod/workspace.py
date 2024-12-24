@@ -7,10 +7,11 @@ from functools import cached_property
 from contextlib import contextmanager
 import json
 from subprocess import check_call
+from platform import system, machine
 
 from ninja.ninja_syntax import Writer as NinjaWriter
 
-from .package import Package
+from .package import Package, Profile
 from .repo import Repo
 from .lock import Lock
 from .thin import parse_armap
@@ -22,6 +23,14 @@ def get_obj_defs(symbols):
         defs.setdefault(obj, set())
         defs[obj].add(name)
     return defs
+
+def get_native_arch():
+    os = system()
+    arch = machine()
+    if os == 'Windows':
+        if arch == 'AMD64':
+            return 'x86_64'
+    return arch
 
 class Workspace:
 
@@ -49,17 +58,21 @@ class Workspace:
     def lock(self):
         return Lock(self.rootdir / "cod.lock", self.repos)
 
-    def write_build(self, profile_name):
-        packages = [self.top_package]
+    def write_build(self, profile_name, top):
+        arch = profile_name.rsplit('.', 1)[1]
+
+        packages = [top]
         for pkgid, name in self.lock[profile_name]:
-            packages.append(Package(self.repos[name].get_path(pkgid)))
+            packages.append(Profile(Package(self.repos[name].get_path(pkgid)), profile_name))
 
         builddir = self.builddir(profile_name)
         builddir.mkdir(parents=True, exist_ok=True)
 
         includedirs = []
         for package in packages:
-            includedirs.append(package.includedir.relative_to(builddir, walk_up=True))
+            includedirs.extend(
+                i.relative_to(builddir, walk_up=True)
+                for i in package.includedirs)
 
         with (builddir / "build.ninja").open("w") as f:
             ninja = NinjaWriter(f)
@@ -69,49 +82,55 @@ class Workspace:
             ninja.variable('ar', ["$zig", "ar"])
             ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
-            ninja.rule('ld', ["$cc", "$in", "-o", "$out"])
+            ninja.rule('ld', ["$cc", "$cflags", "$in", "-o", "$out"])
 
-            ninja.variable('cflags', [f"-I{d.as_posix()}" for d in includedirs])
+            ninja.variable('cflags', [f"--target={arch}-freestanding"] + [f"-I{d.as_posix()}" for d in includedirs])
 
             libs = []
 
             for package in packages:
-                if not package.srcfiles:
+                if not package.objs:
                     continue
-                objs = [
-                    f'{package.id}/{path.with_suffix(".o").as_posix()}'
-                    for path in package.srcfiles]
-                for obj, path in zip(objs, package.srcfiles):
-                    src = (package.srcdir / path).relative_to(builddir, walk_up=True).as_posix()
+                objs = []
+                for obj, path in package.objs.items():
+                    obj = (str(package.id) / obj).as_posix()
+                    objs.append(obj)
+                    src = path.relative_to(builddir, walk_up=True).as_posix()
                     ninja.build([obj], "cc", [src])
                 libname = f"lib/lib{package.id.name}.a"
                 ninja.build([libname], "ar", objs)
                 libs.append(libname)
 
-            package = self.top_package
-            objs = [
-                f'obj/{path.with_suffix(".o").as_posix()}'
-                for path in package.binfiles]
-            for obj, path in zip(objs, package.binfiles):
-                src = (package.bindir / path).relative_to(builddir, walk_up=True).as_posix()
-                bin = f'bin/{path.with_suffix(".bin").as_posix()}'
+            objs = []
+            for bin, path in top.bins.items():
+                src = path.relative_to(builddir, walk_up=True).as_posix()
+                obj = ('obj' / bin.with_suffix(".o")).as_posix()
+                objs.append(obj)
+                bin = ('bin' / bin).as_posix()
                 ninja.build([obj], "cc", [src])
-                ninja.build([bin], "ld", [obj]+libs)
+                ninja.build([bin], "ld", [obj] + libs)
+
             ninja.build(['lib/bin.a'], "ar", objs)
 
         return libs
 
-    def build(self, profile_name, no_bin=False):
-        if self.top_package.includedeps:
+    def build(self, arch, profile_name, no_bin=False):
+        if arch is None:
+            arch = get_native_arch()
+        assert arch in (self.top_package.arch or (arch,))
+
+        profile_name = f'{profile_name}.{arch}'
+        top = Profile(self.top_package, profile_name)
+
+        if top.includedeps:
             with self.lock(profile_name):
-                self.lock.install_provides(self.top_package.includedeps)
+                self.lock.install_provides(top.includedeps)
 
         builddir = self.builddir(profile_name)
 
-        libs = self.write_build(profile_name)
-        if no_bin or not self.top_package.binfiles:
+        libs = self.write_build(profile_name, top)
+        if no_bin or not top.bins:
             if libs:
-                builddir = self.builddir(profile_name)
                 check_call([sys.executable, "-mninja"] + libs, cwd=builddir)
             return
 
@@ -119,13 +138,13 @@ class Workspace:
             check_call([sys.executable, "-mninja", "lib/bin.a"] + libs, cwd=builddir)
             bin_defs = get_obj_defs(parse_armap(builddir / "lib/bin.a"))
             symbols = dict(sum((parse_armap(builddir / lib) for lib in libs), []))
-            lib_deps = {lib: get_symbol_deps(builddir, lib) for lib in set(symbols.values())}
+            lib_deps = {lib: get_symbol_deps(builddir, arch, lib) for lib in set(symbols.values())}
 
             undefined = set()
 
             for obj, defs in bin_defs.items():
                 queue = []
-                queue.extend(get_symbol_deps(builddir, obj))
+                queue.extend(get_symbol_deps(builddir, arch, obj))
                 while queue:
                     symbol = queue.pop(0)
                     if symbol in undefined:
@@ -146,28 +165,39 @@ class Workspace:
                 self.lock.install_provides(provides)
                 if not self.lock.dirty:
                     break
-            libs = self.write_build(profile_name)
+            libs = self.write_build(profile_name, top)
 
         check_call([sys.executable, "-mninja"], cwd=builddir)
 
-    def install(self, profile_name, packages):
+    def install(self, arch, profile_name, packages):
+        if arch is None:
+            arch = get_native_arch()
+        assert arch in (self.top_package.arch or (arch,))
+        profile_name = f'{profile_name}.{arch}'
         with self.lock(profile_name):
             self.lock.install_packages(packages)
 
-    def package(self):
+    def package(self, arch):
+        if arch is None:
+            for arch in self.top_package.arch or (get_native_arch(),):
+                self.package(arch)
+            return
+        assert arch in (self.top_package.arch or (arch,))
+
+        profile_name = f"release.{arch}"
+        top = Profile(self.top_package, profile_name)
         info = {
-            "requires": self.top_package.includedeps,
-            "provides": [f"<{h.as_posix()}>" for h in self.top_package.includefiles],
+            "requires": top.includedeps,
+            "provides": [f"<{h.as_posix()}>" for h in top.includefiles],
         }
 
-        if self.top_package.srcfiles:
-            self.build("release", no_bin=True)
-            libname = f"lib{self.top_package.id.name}.a"
-            symbols = parse_armap(self.builddir("release")/"lib"/libname)
-
+        if top.objs:
+            self.build(arch, "release", no_bin=True)
+            libname = f"lib{top.id.name}.a"
+            symbols = parse_armap(self.builddir(profile_name)/"lib"/libname)
             info["provides"].append(libname)
             info["provides"].extend(f"({s})" for s, _ in symbols)
 
         self.workdir.mkdir(parents=True, exist_ok=True)
-        with (self.workdir / f"{self.top_package.id}.cod").open("w") as f:
+        with (self.workdir / f"{top.id}.cod").open("w") as f:
             json.dump(info, f)

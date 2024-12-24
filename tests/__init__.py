@@ -34,6 +34,22 @@ class TestSymbolDependency(Case):
         self.assertCodOk("lib", "package")
         self.assertCodOk("bin", "build")
 
+class TestIncludeAsm(Case):
+    directory = 'include-asm'
+
+    def test_build(self):
+        self.assertCodOk("lib", "package")
+        self.assertCodOk("bin", "build")
+
+class TestSymbolAsm(Case):
+    directory = 'symbol-asm'
+
+    def test_build(self):
+        self.assertCodOk("include", "package")
+        self.assertCodFail("bin", "build")
+        self.assertCodOk("lib", "package")
+        self.assertCodOk("bin", "build")
+
 class TestIncludeTransitive(Case):
     directory = 'include-transitive'
 

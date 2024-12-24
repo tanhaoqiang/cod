@@ -49,40 +49,71 @@ class PackageId:
     def __str__(self):
         return f"{self.name}-{self.evr}.{self.arch}"
 
-def find_files(path, pattern):
-    return [f.relative_to(path) for f in path.rglob(pattern)]
+def find_files(path, pattern, suffix, prefix="."):
+    return {prefix / (f.relative_to(path).with_suffix(suffix)):f
+            for f in path.rglob(pattern)}
 
 class Package:
 
     def __init__(self, rootdir):
         self.rootdir = rootdir
-        self.includedir = rootdir / "include"
-        self.srcdir = rootdir / "src"
-        self.bindir = rootdir / "bin"
 
         with (self.rootdir / "cod.toml").open("rb") as f:
             toml = tomllib.load(f)
         self.manifest = Manifest.model_validate(toml)
         package = self.manifest.package
-        evr = EVR(package.epoch, package.version, package.release)
-        self.id = PackageId(package.name, str(evr), package.arch or 'noarch')
+        self.name = package.name
+        self.evr = EVR(package.epoch, package.version, package.release)
+        self.arch = package.arch
+
+class Profile:
+
+    def __init__(self, package, profile_name):
+        self.package = package
+        profile_name, arch = profile_name.rsplit('.', 1)
+        if package.arch is None:
+            arch = 'noarch'
+        self.arch = arch
+        self.manifest = self.package.manifest.profile.get(profile_name, {})
+        self.id = PackageId(package.name, str(package.evr), arch)
+
+        self.includedirs = [package.rootdir / "include"]
+        if self.archdir:
+            self.includedirs.append(self.archdir / "include")
+
+    @cached_property
+    def archdir(self):
+        if self.arch != 'noarch':
+            return self.package.rootdir / "arch" / self.arch
+
+    @cached_property
+    def bins(self):
+        d = find_files(self.package.rootdir / "bin", "*.c", ".bin")
+        if self.archdir:
+            d.update(find_files(self.archdir / "bin", "*.c", ".bin"))
+        return d
+
+    @cached_property
+    def objs(self):
+        d = find_files(self.package.rootdir / "src", "*.c", ".o")
+        if self.archdir:
+            d.update(find_files(self.archdir / "src", "*.c", ".o", "asm"))
+        return d
 
     @cached_property
     def includefiles(self):
-        return find_files(self.includedir, "*.h")
-
-    @cached_property
-    def srcfiles(self):
-        return find_files(self.srcdir, "*.c")
-
-    @cached_property
-    def binfiles(self):
-        return find_files(self.bindir, "*.c")
+        d = find_files(self.package.rootdir / "include", "*.h", ".h")
+        if self.archdir:
+            d.update(find_files(self.archdir / "include", "*.h", ".h"))
+        return d
 
     @cached_property
     def includedeps(self):
         deps = set()
-        deps.update(get_include_deps(self.includedir, self.includedir, self.includefiles))
-        deps.update(get_include_deps(self.srcdir, self.includedir, self.srcfiles))
-        deps.update(get_include_deps(self.bindir, self.includedir, self.binfiles))
+        for f in self.includefiles.values():
+            deps.update(get_include_deps(self.includedirs, f))
+        for f in self.objs.values():
+            deps.update(get_include_deps(self.includedirs, f))
+        for f in self.bins.values():
+            deps.update(get_include_deps(self.includedirs, f))
         return [f"<{h}>" for h in deps]
