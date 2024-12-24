@@ -6,6 +6,7 @@ from functools import cached_property
 import tomllib
 
 from .dep import get_include_deps
+from .manifest import Manifest
 
 @dataclass(frozen=True)
 class EVR:
@@ -61,13 +62,10 @@ class Package:
 
         with (self.rootdir / "cod.toml").open("rb") as f:
             toml = tomllib.load(f)
-        self._toml = toml
-        package = toml['package']
-        evr = EVR(
-            package.get('epoch', 0),
-            package['version'],
-            package.get('release', '0'))
-        self.id = PackageId(package['name'], str(evr), package.get('arch', 'noarch'))
+        self.manifest = Manifest.model_validate(toml)
+        package = self.manifest.package
+        evr = EVR(package.epoch, package.version, package.release)
+        self.id = PackageId(package.name, str(evr), package.arch or 'noarch')
 
     @cached_property
     def includefiles(self):

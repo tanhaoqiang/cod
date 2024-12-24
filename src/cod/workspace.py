@@ -43,7 +43,7 @@ class Workspace:
     def repos(self):
         return {
             name: Repo(self.rootdir, self.repodir(name), config)
-            for name, config in self.top_package._toml.get('repo', {}).items()}
+            for name, config in self.top_package.manifest.repo.items()}
 
     @cached_property
     def lock(self):
