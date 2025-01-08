@@ -4,18 +4,16 @@
 import sys
 from pathlib import Path
 from functools import cached_property
-from contextlib import contextmanager
 import json
 from subprocess import check_call
 from platform import system, machine
-
-from ninja.ninja_syntax import Writer as NinjaWriter
 
 from .project import Project
 from .package import Package, Profile
 from .lock import Lock
 from .thin import parse_armap
 from .dep import get_symbol_deps
+from .ninja import NinjaWriter
 
 def get_obj_defs(symbols):
     defs = {}
@@ -69,8 +67,7 @@ class Workspace:
                 i.relative_to(builddir, walk_up=True)
                 for i in package.includedirs)
 
-        with (builddir / "build.ninja").open("w") as f:
-            ninja = NinjaWriter(f)
+        with NinjaWriter(builddir / "build.ninja") as ninja:
             ninja.variable('python', [sys.executable])
             ninja.variable('zig', ["$python", "-mziglang"])
             ninja.variable('cc', ["$zig", "cc"])
