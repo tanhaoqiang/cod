@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import cached_property
 import tomllib
 
-from .dep import get_include_deps
+from ..dep import get_include_deps
 from .manifest import Manifest
 
 @dataclass(frozen=True)

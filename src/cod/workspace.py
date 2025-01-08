@@ -1,4 +1,4 @@
-# Copyright (c) 2024 tanhaoqiang
+# Copyright (c) 2024-2025 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import sys
@@ -11,8 +11,8 @@ from platform import system, machine
 
 from ninja.ninja_syntax import Writer as NinjaWriter
 
+from .project import Project
 from .package import Package, Profile
-from .repo import Repo
 from .lock import Lock
 from .thin import parse_armap
 from .dep import get_symbol_deps
@@ -38,32 +38,27 @@ class Workspace:
         self.rootdir = Path.cwd() if rootdir is None else Path(rootdir)
         self.workdir = self.rootdir / ".cod"
 
-    def repodir(self, name):
-        return self.workdir / f"repo.{name}"
-
     def builddir(self, profile_name):
-        return self.workdir / f"profile.{profile_name}"
+        return self.workdir / profile_name
+
+    @cached_property
+    def project(self):
+        return Project(self.rootdir)
 
     @cached_property
     def top_package(self):
         return Package(self.rootdir)
 
     @cached_property
-    def repos(self):
-        return {
-            name: Repo(self.rootdir, self.repodir(name), config)
-            for name, config in self.top_package.manifest.repo.items()}
-
-    @cached_property
     def lock(self):
-        return Lock(self.rootdir / "cod.lock", self.repos)
+        return Lock(self.rootdir / "cod.lock", self.project.repos)
 
     def write_build(self, profile_name, top):
         arch = profile_name.rsplit('.', 1)[1]
 
         packages = [top]
         for pkgid, name in self.lock[profile_name]:
-            packages.append(Profile(Package(self.repos[name].get_path(pkgid)), profile_name))
+            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), profile_name))
 
         builddir = self.builddir(profile_name)
         builddir.mkdir(parents=True, exist_ok=True)
