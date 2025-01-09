@@ -28,6 +28,9 @@ def get_native_arch():
     if os == 'Windows':
         if arch == 'AMD64':
             return 'x86_64'
+    elif os == 'Darwin':
+        if arch == 'arm64':
+            return 'aarch64'
     return arch
 
 class Workspace:

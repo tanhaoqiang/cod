@@ -30,7 +30,7 @@ Now, let's reinvent the wheel, once and for all.
 pip install git+https://github.com/tanhaoqiang/cod.git
 ```
 
-Unfortunately, libsolv would segfault on MacOS, so wheel package is not uploaded to PyPI. Now to install libsolv, run this command:
+Before wheel package uploaded to PyPI, run this command to install libsolv:
 
 ```
 pip install -i "https://tanhaoqiang.github.io/simple" solv
