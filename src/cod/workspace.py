@@ -60,6 +60,7 @@ class Workspace:
         packages = [top]
         for pkgid, name in self.lock[profile_name]:
             packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), profile_name))
+        packages.sort()
 
         rootdir = self.builddir(profile_name)
         rootdir.mkdir(parents=True, exist_ok=True)

@@ -82,6 +82,9 @@ class Profile:
         if self.archdir:
             self.includedirs.append(self.archdir / "include")
 
+    def __lt__(self, other):
+        return str(self.id) < str(other.id)
+
     @cached_property
     def archdir(self):
         if self.arch != 'noarch':
@@ -120,13 +123,14 @@ class Profile:
         return [f"<{h}>" for h in deps]
 
     def write_build_objs(self, rootdir, ninja, objs):
-        l = []
-        for dst, src in objs.items():
-            dst = "$basedir/" + dst.with_suffix(".o").as_posix()
-            src = src.relative_to(rootdir, walk_up=True).as_posix()
+        result = []
+        keys = list(sorted(objs))
+        for key in keys:
+            dst = "$basedir/" + key.with_suffix(".o").as_posix()
+            src = objs[key].relative_to(rootdir, walk_up=True).as_posix()
             ninja.build([dst], "cc", [src])
-            l.append(dst)
-        ninja.variable('objs', l)
+            result.append(dst)
+        ninja.variable('objs', result)
 
     def write_build_lib(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
