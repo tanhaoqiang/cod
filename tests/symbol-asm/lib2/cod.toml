@@ -1,4 +1,4 @@
 [package]
-name = "lib"
+name = "lib2"
 version = "1.0"
 arch = ["x86_64"]
