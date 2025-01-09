@@ -8,7 +8,7 @@ from ninja.ninja_syntax import Writer
 class NinjaWriter:
 
     def __init__(self, path):
-        self._path = path
+        self.path = path
         self._writer = Writer(StringIO())
 
     def __enter__(self):
@@ -21,7 +21,7 @@ class NinjaWriter:
         new = self._writer.output.getvalue()
 
         try:
-            f = self._path.open("r")
+            f = self.path.open("r")
         except FileNotFoundError:
             pass
         else:
@@ -30,5 +30,6 @@ class NinjaWriter:
             if old == new:
                 return
 
-        with self._path.open("w") as f:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("w") as f:
             f.write(new)

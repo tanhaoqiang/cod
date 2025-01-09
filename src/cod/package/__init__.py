@@ -1,4 +1,4 @@
-# Copyright (c) 2024 tanhaoqiang
+# Copyright (c) 2024-2025 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from dataclasses import dataclass
@@ -7,6 +7,7 @@ import tomllib
 
 from ..dep import get_include_deps
 from .manifest import Manifest
+from ..ninja import NinjaWriter
 
 @dataclass(frozen=True)
 class EVR:
@@ -117,3 +118,30 @@ class Profile:
         for f in self.bins.values():
             deps.update(get_include_deps(self.includedirs, f))
         return [f"<{h}>" for h in deps]
+
+    def write_build_objs(self, rootdir, ninja, objs):
+        l = []
+        for dst, src in objs.items():
+            dst = "$basedir/" + dst.with_suffix(".o").as_posix()
+            src = src.relative_to(rootdir, walk_up=True).as_posix()
+            ninja.build([dst], "cc", [src])
+            l.append(dst)
+        ninja.variable('objs', l)
+
+    def write_build_lib(self, rootdir, lib_ninja):
+        with NinjaWriter(rootdir / lib_ninja) as ninja:
+            ninja.variable('basedir', lib_ninja.parent.as_posix())
+            self.write_build_objs(rootdir, ninja, self.objs)
+            libname = f"lib/lib{self.id.name}.a"
+            ninja.build([libname], "ar", "$objs")
+            return libname
+
+    def write_build_bin(self, rootdir, lib_ninja):
+        with NinjaWriter(rootdir / lib_ninja) as ninja:
+            ninja.variable('basedir', lib_ninja.parent.as_posix())
+            self.write_build_objs(rootdir, ninja, self.bins)
+            ninja.build(['lib/bin.a'], "ar", "$objs")
+            for dst in self.bins:
+                src = "$basedir/" + dst.with_suffix(".o").as_posix()
+                bin = ('bin' / dst).as_posix()
+                ninja.build([bin], "ld", [src])
