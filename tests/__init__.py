@@ -105,3 +105,22 @@ class TestObsolete(Case):
         self.assertCodOk("lib1", "package")
         self.assertCodOk("lib2", "package")
         self.assertCodOk("bin", "build")
+
+class BuildFlags(Case):
+    directory = 'build-flags'
+
+    def test_build(self):
+        self.assertCodFail("lib", "build")
+        self.assertCodOk("lib", "build", "-p", "debug")
+        self.assertCodOk("lib", "build", "-p", "debug_noarch")
+        self.assertCodFail("lib", "build", "-p", "debug_arch", "-a", "aarch64")
+        self.assertCodOk("lib", "build", "-p", "debug_arch", "-a", "x86_64")
+
+class ExportFlags(Case):
+    directory = 'export-flags'
+
+    def test_build(self):
+        self.assertCodOk("lib1", "package")
+        self.assertCodOk("lib", "build")
+        self.assertCodOk("lib", "install", "lib1")
+        self.assertCodFail("lib", "build")

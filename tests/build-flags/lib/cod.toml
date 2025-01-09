@@ -1,0 +1,15 @@
+[package]
+name = "lib"
+version = "1.0"
+
+[build]
+cflags = "-Werror"
+
+[profile.debug.build]
+cflags = "-Wno-#warnings"
+
+[profile.debug_noarch.build.noarch]
+cflags = "-Wno-#warnings"
+
+[profile.debug_arch.build.x86_64]
+cflags = "-Wno-#warnings"

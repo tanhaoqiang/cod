@@ -38,7 +38,7 @@ def get_include_deps(includedirs, f):
 def get_symbol_deps(workdir, arch, obj):
     script = Path(__file__).parent / "always-fail.ld"
     proc = run(
-        [sys.executable, "-mziglang", "cc", f"--target={arch}-freestanding",
+        [sys.executable, "-mziglang", "cc", f"--target={arch}-freestanding-none",
          f"-Wl,--script={script}", obj],
         stderr=PIPE, text=True, cwd=workdir)
     return re.findall(r': error: undefined symbol: (\S+)$', proc.stderr, re.MULTILINE)

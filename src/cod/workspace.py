@@ -80,7 +80,13 @@ class Workspace:
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
             ninja.rule('ld', ["$cc", "$cflags", "$in", "$libs", "-o", "$out"])
 
-            ninja.variable('cflags', [f"--target={arch}-freestanding"] + [f"-I{d.as_posix()}" for d in includedirs])
+            ninja.variable('cflags', [f"--target={arch}-freestanding-none"] + [f"-I{d.as_posix()}" for d in includedirs])
+
+            for package in packages:
+                lib_ninja = rootdir/str(package.id)/"export.ninja"
+                with NinjaWriter(lib_ninja) as subninja:
+                    package.write_build_export(subninja)
+                ninja.include(lib_ninja.relative_to(rootdir))
 
             libs = []
             for package in packages:
@@ -89,7 +95,6 @@ class Workspace:
                 lib_ninja = (rootdir/str(package.id)/"lib.ninja").relative_to(rootdir)
                 libs.append(package.write_build_lib(rootdir, lib_ninja))
                 ninja.subninja(lib_ninja.as_posix())
-
             ninja.variable('libs', libs)
 
             if top.bins:

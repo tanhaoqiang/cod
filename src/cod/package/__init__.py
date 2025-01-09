@@ -6,7 +6,7 @@ from functools import cached_property
 import tomllib
 
 from ..dep import get_include_deps
-from .manifest import Manifest
+from . import manifest
 from ..ninja import NinjaWriter
 
 @dataclass(frozen=True)
@@ -61,21 +61,29 @@ class Package:
 
         with (self.rootdir / "cod.toml").open("rb") as f:
             toml = tomllib.load(f)
-        self.manifest = Manifest.model_validate(toml)
+        self.manifest = manifest.Manifest.model_validate(toml)
         package = self.manifest.package
         self.name = package.name
         self.evr = EVR(package.epoch, package.version, package.release)
         self.arch = package.arch
+
+
+def get_build_flags(build, arch):
+    if isinstance(build, manifest.BuildFlags):
+        return build.normalize()
+    default = manifest.BuildFlags()
+    return build.get('noarch', default) + build.get(arch, default)
 
 class Profile:
 
     def __init__(self, package, profile_name):
         self.package = package
         profile_name, arch = profile_name.rsplit('.', 1)
+        self.build_arch = arch
         if package.arch is None:
             arch = 'noarch'
         self.arch = arch
-        self.manifest = self.package.manifest.profile.get(profile_name, {})
+        self.manifest = self.package.manifest.profile.get(profile_name, manifest.Profile())
         self.id = PackageId(package.name, str(package.evr), arch)
 
         self.includedirs = [package.rootdir / "include"]
@@ -84,6 +92,16 @@ class Profile:
 
     def __lt__(self, other):
         return str(self.id) < str(other.id)
+
+    @cached_property
+    def build_flags(self):
+        package_flags = get_build_flags(self.package.manifest.build, self.build_arch)
+        profile_flags = get_build_flags(self.manifest.build, self.build_arch)
+        return package_flags + profile_flags
+
+    @cached_property
+    def export_flags(self):
+        return get_build_flags(self.package.manifest.export, self.build_arch)
 
     @cached_property
     def archdir(self):
@@ -122,6 +140,16 @@ class Profile:
             deps.update(get_include_deps(self.includedirs, f))
         return [f"<{h}>" for h in deps]
 
+    def write_build_flags(self, ninja):
+        flags = self.build_flags
+        ninja.variable('cflags', ['$cflags'] + flags.cflags)
+        ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
+
+    def write_build_export(self, ninja):
+        flags = self.export_flags
+        ninja.variable('cflags', ['$cflags'] + flags.cflags)
+        ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
+
     def write_build_objs(self, rootdir, ninja, objs):
         result = []
         keys = list(sorted(objs))
@@ -134,6 +162,7 @@ class Profile:
 
     def write_build_lib(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
+            self.write_build_flags(ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             self.write_build_objs(rootdir, ninja, self.objs)
             libname = f"lib/lib{self.id.name}.a"
@@ -142,6 +171,7 @@ class Profile:
 
     def write_build_bin(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
+            self.write_build_flags(ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             self.write_build_objs(rootdir, ninja, self.bins)
             ninja.build(['lib/bin.a'], "ar", "$objs")
