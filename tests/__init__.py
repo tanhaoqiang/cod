@@ -131,3 +131,9 @@ class SingleArch(Case):
     def test_build(self):
         self.assertCodOk("lib1", "build") # x86_64
         self.assertCodOk("lib2", "build") # aarch64
+
+class MultipleObjects(Case):
+    directory = 'multiple-objects'
+
+    def test_build(self):
+        self.assertCodOk("lib", "build")

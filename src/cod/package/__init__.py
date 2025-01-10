@@ -160,23 +160,23 @@ class Profile:
             src = objs[key].relative_to(rootdir, walk_up=True).as_posix()
             ninja.build([dst], "cc", [src])
             result.append(dst)
-        ninja.variable('objs', result)
+        return result
 
     def write_build_lib(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
             self.write_build_flags(ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
-            self.write_build_objs(rootdir, ninja, self.objs)
+            objs = self.write_build_objs(rootdir, ninja, self.objs)
             libname = f"lib/lib{self.id.name}.a"
-            ninja.build([libname], "ar", "$objs")
+            ninja.build([libname], "ar", objs)
             return libname
 
     def write_build_bin(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
             self.write_build_flags(ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
-            self.write_build_objs(rootdir, ninja, self.bins)
-            ninja.build(['lib/bin.a'], "ar", "$objs")
+            objs = self.write_build_objs(rootdir, ninja, self.bins)
+            ninja.build(['lib/bin.a'], "ar", objs)
             for dst in self.bins:
                 src = "$basedir/" + dst.with_suffix(".o").as_posix()
                 bin = ('bin' / dst).as_posix()
