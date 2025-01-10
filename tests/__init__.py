@@ -106,7 +106,7 @@ class TestObsolete(Case):
         self.assertCodOk("lib2", "package")
         self.assertCodOk("bin", "build")
 
-class BuildFlags(Case):
+class TestBuildFlags(Case):
     directory = 'build-flags'
 
     def test_build(self):
@@ -116,7 +116,7 @@ class BuildFlags(Case):
         self.assertCodFail("lib", "build", "-p", "debug_arch", "-a", "aarch64")
         self.assertCodOk("lib", "build", "-p", "debug_arch", "-a", "x86_64")
 
-class ExportFlags(Case):
+class TestExportFlags(Case):
     directory = 'export-flags'
 
     def test_build(self):
@@ -125,15 +125,21 @@ class ExportFlags(Case):
         self.assertCodOk("lib", "install", "lib1")
         self.assertCodFail("lib", "build")
 
-class SingleArch(Case):
+class TestSingleArch(Case):
     directory = 'single-arch'
 
     def test_build(self):
         self.assertCodOk("lib1", "build") # x86_64
         self.assertCodOk("lib2", "build") # aarch64
 
-class MultipleObjects(Case):
+class TestMultipleObjects(Case):
     directory = 'multiple-objects'
+
+    def test_build(self):
+        self.assertCodOk("lib", "build")
+
+class TestI686Target(Case):
+    directory = 'i686-target'
 
     def test_build(self):
         self.assertCodOk("lib", "build")

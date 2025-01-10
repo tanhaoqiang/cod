@@ -28,10 +28,23 @@ def get_native_arch():
     if os == 'Windows':
         if arch == 'AMD64':
             return 'x86_64'
+        elif arch == 'x86':
+            from warnings import warn
+            from importlib.metadata import version
+            if version('ziglang') == '0.13.0':
+                warn("zig 0.13.0 on x86-windows is broken, see https://github.com/ziglang/zig/issues/20047")
+            return 'i686'
+        elif arch == 'ARM64':
+            return 'aarch64'
     elif os == 'Darwin':
         if arch == 'arm64':
             return 'aarch64'
     return arch
+
+def arch_to_target(arch):
+    if arch in ('i386', 'i486', 'i586', 'i686'):
+        return ["--target=x86-freestanding-none", f"-mcpu={arch}"]
+    return [f"--target={arch}-freestanding-none"]
 
 class Workspace:
 
@@ -80,7 +93,8 @@ class Workspace:
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
             ninja.rule('ld', ["$cc", "$cflags", "$in", "$libs", "-o", "$out"])
 
-            ninja.variable('cflags', [f"--target={arch}-freestanding-none"] + [f"-I{d.as_posix()}" for d in includedirs])
+            target = arch_to_target(arch)
+            ninja.variable('cflags',  target + [f"-I{d.as_posix()}" for d in includedirs])
 
             for package in packages:
                 lib_ninja = rootdir/str(package.id)/"export.ninja"
@@ -126,17 +140,19 @@ class Workspace:
                 check_call([sys.executable, "-mninja"] + libs, cwd=rootdir)
             return
 
+        target = arch_to_target(arch)
+
         while True:
             check_call([sys.executable, "-mninja", "lib/bin.a"] + libs, cwd=rootdir)
             bin_defs = get_obj_defs(parse_armap(rootdir / "lib/bin.a"))
             symbols = dict(sum((parse_armap(rootdir / lib) for lib in libs), []))
-            lib_deps = {lib: get_symbol_deps(rootdir, arch, lib) for lib in set(symbols.values())}
+            lib_deps = {lib: get_symbol_deps(rootdir, target, lib) for lib in set(symbols.values())}
 
             undefined = set()
 
             for obj, defs in bin_defs.items():
                 queue = []
-                queue.extend(get_symbol_deps(rootdir, arch, obj))
+                queue.extend(get_symbol_deps(rootdir, target, obj))
                 while queue:
                     symbol = queue.pop(0)
                     if symbol in undefined:

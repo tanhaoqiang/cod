@@ -1,4 +1,4 @@
-# Copyright (c) 2024 tanhaoqiang
+# Copyright (c) 2024-2025 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import sys
@@ -35,10 +35,9 @@ def get_include_deps(includedirs, f):
             if not (f.parent / name).exists():
                 yield name
 
-def get_symbol_deps(workdir, arch, obj):
+def get_symbol_deps(workdir, target, obj):
     script = Path(__file__).parent / "always-fail.ld"
     proc = run(
-        [sys.executable, "-mziglang", "cc", f"--target={arch}-freestanding-none",
-         f"-Wl,--script={script}", obj],
+        [sys.executable, "-mziglang", "cc"] + target + [f"-Wl,--script={script}", obj],
         stderr=PIPE, text=True, cwd=workdir)
     return re.findall(r': error: undefined symbol: (\S+)$', proc.stderr, re.MULTILINE)
