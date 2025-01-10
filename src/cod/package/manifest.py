@@ -34,7 +34,7 @@ class Package(BaseModel):
     version: str
     epoch: int = 0
     release: str = '0'
-    arch: list[str] | None = None
+    arch: str | list[str] | None = None
 
 class Profile(BaseModel):
     build: dict[str, BuildFlags] | BuildFlags = BuildFlags()

@@ -124,3 +124,10 @@ class ExportFlags(Case):
         self.assertCodOk("lib", "build")
         self.assertCodOk("lib", "install", "lib1")
         self.assertCodFail("lib", "build")
+
+class SingleArch(Case):
+    directory = 'single-arch'
+
+    def test_build(self):
+        self.assertCodOk("lib1", "build") # x86_64
+        self.assertCodOk("lib2", "build") # aarch64

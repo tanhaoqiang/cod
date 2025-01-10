@@ -65,8 +65,10 @@ class Package:
         package = self.manifest.package
         self.name = package.name
         self.evr = EVR(package.epoch, package.version, package.release)
-        self.arch = package.arch
-
+        arch = package.arch
+        if isinstance(arch, str):
+            arch = [arch]
+        self.arch = arch
 
 def get_build_flags(build, arch):
     if isinstance(build, manifest.BuildFlags):

@@ -107,6 +107,8 @@ class Workspace:
     def build(self, arch, profile_name, no_bin=False):
         if arch is None:
             arch = get_native_arch()
+            if self.top_package.arch and len(self.top_package.arch) == 1:
+                arch = self.top_package.arch[0]
         assert arch in (self.top_package.arch or (arch,))
 
         profile_name = f'{profile_name}.{arch}'
@@ -162,6 +164,8 @@ class Workspace:
     def install(self, arch, profile_name, packages):
         if arch is None:
             arch = get_native_arch()
+            if self.top_package.arch and len(self.top_package.arch) == 1:
+                arch = self.top_package.arch[0]
         assert arch in (self.top_package.arch or (arch,))
         profile_name = f'{profile_name}.{arch}'
         with self.lock(profile_name):
