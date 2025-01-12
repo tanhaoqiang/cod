@@ -186,4 +186,4 @@ class Profile:
             for dst in self.bins:
                 src = "$basedir/" + dst.with_suffix(".o").as_posix()
                 bin = ('bin' / dst).as_posix()
-                ninja.build([bin], "ld", [src], ['$linker-script'])
+                ninja.build([bin], "ld", [src], ['libs', '$linker-script'])

@@ -111,6 +111,7 @@ class Workspace:
                 lib_ninja = (rootdir/str(package.id)/"lib.ninja").relative_to(rootdir)
                 libs.append(package.write_build_lib(rootdir, lib_ninja))
                 ninja.subninja(lib_ninja.as_posix())
+            ninja.build(['libs'], "phony", libs)
             ninja.variable('libs', libs)
 
             if top.bins:
