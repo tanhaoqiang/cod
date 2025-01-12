@@ -90,6 +90,7 @@ class Workspace:
             ninja.variable('cc', ["$zig", "cc"])
             ninja.variable('ar', ["$zig", "ar"])
             ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
+            ninja.rule('as', ["$cc", "$cflags", "$sflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
             ninja.variable('linker-script', 'linker-script')
             ninja.build(['linker-script'], "phony")

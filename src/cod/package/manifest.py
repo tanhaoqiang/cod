@@ -18,12 +18,14 @@ class BuildFlags(BaseModel):
         populate_by_name = True
 
     cflags: str | list[str] | None = None
+    sflags: str | list[str] | None = None
     ldflags: str | list[str] | None = None
     linker_script: str | None = Field(alias="linker-script", default=None)
 
     def normalize(self):
         return BuildFlags(
             cflags = normalize_flags(self.cflags),
+            sflags = normalize_flags(self.sflags),
             ldflags = normalize_flags(self.ldflags),
             linker_script = self.linker_script)
 
@@ -32,6 +34,7 @@ class BuildFlags(BaseModel):
         b = other.normalize()
         return BuildFlags(
             cflags = a.cflags + b.cflags,
+            sflags = a.sflags + b.sflags,
             ldflags = a.ldflags + b.ldflags,
             linker_script = other.linker_script or self.linker_script)
 

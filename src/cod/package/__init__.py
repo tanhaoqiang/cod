@@ -120,8 +120,10 @@ class Profile:
     @cached_property
     def objs(self):
         d = find_files(self.package.rootdir / "src", "*.c", ".o")
+        d.update(find_files(self.package.rootdir / "src", "*.S", ".s.o"))
         if self.archdir:
             d.update(find_files(self.archdir / "src", "*.c", ".o", "asm"))
+            d.update(find_files(self.archdir / "src", "*.S", ".s.o", "asm"))
         return d
 
     @cached_property
@@ -145,6 +147,8 @@ class Profile:
     def write_flags(self, rootdir, ninja, flags):
         if flags.cflags:
             ninja.variable('cflags', ['$cflags'] + flags.cflags)
+        if flags.sflags:
+            ninja.variable('sflags', ['$sflags'] + flags.sflags)
         if flags.ldflags:
             ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
         if flags.linker_script:
@@ -163,8 +167,13 @@ class Profile:
         keys = list(sorted(objs))
         for key in keys:
             dst = "$basedir/" + key.with_suffix(".o").as_posix()
-            src = objs[key].relative_to(rootdir, walk_up=True).as_posix()
-            ninja.build([dst], "cc", [src])
+            src = objs[key].relative_to(rootdir, walk_up=True)
+            if src.suffix == '.c':
+                ninja.build([dst], "cc", [src.as_posix()])
+            elif src.suffix == '.S':
+                ninja.build([dst], "as", [src.as_posix()])
+            else:
+                assert False, f"{src.suffix} file not supported"
             result.append(dst)
         return result
 

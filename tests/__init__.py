@@ -156,3 +156,9 @@ class TestLinkerScript(Case):
         self.assertCodOk("lib", "package")
         self.assertCodOk("bin", "install", "lib")
         self.assertCodFail("bin", "build")
+
+class TestAssembly(Case):
+    directory = 'assembly'
+
+    def test_build(self):
+        self.assertCodOk("bin", "build")
