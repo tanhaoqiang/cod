@@ -112,9 +112,9 @@ class Profile:
 
     @cached_property
     def bins(self):
-        d = find_files(self.package.rootdir / "bin", "*.c", ".bin")
+        d = find_files(self.package.rootdir / "bin", "*.c", ".elf")
         if self.archdir:
-            d.update(find_files(self.archdir / "bin", "*.c", ".bin"))
+            d.update(find_files(self.archdir / "bin", "*.c", ".elf"))
         return d
 
     @cached_property
