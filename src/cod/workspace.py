@@ -89,17 +89,17 @@ class Workspace:
         with NinjaWriter(rootdir / "build.ninja") as ninja:
             ninja.variable('python', [sys.executable])
             ninja.variable('zig', ["$python", "-mziglang"])
-            ninja.variable('cc', ["$zig", "cc"])
+            ninja.variable('cc', ["$zig", "clang", f"--target={arch}-unknown-unknown"])
             ninja.variable('ar', ["$zig", "ar"])
             ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('as', ["$cc", "$cflags", "$sflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
             ninja.variable('linker-script', 'linker-script')
             ninja.build(['linker-script'], "phony")
-            ninja.rule('ld', ["$cc", "$cflags", "$ldflags", "$linker-script-flags", "$in", "$libs", "-o", "$out"])
-
             target = arch_to_target(arch)
-            ninja.variable('cflags',  target + [f"-I{d.as_posix()}" for d in includedirs])
+            ninja.rule('ld', ["$zig", "cc"] + target + ["$cflags", "$ldflags", "$linker-script-flags", "$in", "$libs", "-o", "$out"])
+
+            ninja.variable('cflags', ["-ffreestanding", "-nostdinc", "-nostdlib", "-fno-builtin"] + [f"-I{d.as_posix()}" for d in includedirs])
 
             for package in packages:
                 lib_ninja = rootdir/str(package.id)/"export.ninja"

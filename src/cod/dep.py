@@ -22,7 +22,7 @@ def iter_lines(s):
         yield full
 
 def get_include_deps(includedirs, f):
-    argv = [sys.executable, "-mziglang", "cc", "-MM", "-MG"]
+    argv = [sys.executable, "-mziglang", "clang", "-nostdinc", "-MM", "-MG"]
     argv.extend(f"-I{i}" for i in includedirs)
     s = check_output(argv + [f], cwd = f.parent).decode()
 
