@@ -46,6 +46,8 @@ def arch_to_target(arch):
         return ["--target=x86-freestanding-none", f"-mcpu={arch}"]
     return [f"--target={arch}-freestanding-none"]
 
+LIB_PROFILE='release'
+
 class Workspace:
 
     def __init__(self, pkg_dir=None):
@@ -72,7 +74,7 @@ class Workspace:
 
         packages = [top]
         for pkgid, name in self.lock[profile_name]:
-            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), profile_name))
+            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), f'{LIB_PROFILE}.{arch}'))
         packages.sort()
 
         rootdir = self.builddir(profile_name)
@@ -198,7 +200,7 @@ class Workspace:
             return
         assert arch in (self.top_package.arch or (arch,))
 
-        profile_name = f"release.{arch}"
+        profile_name = f"{LIB_PROFILE}.{arch}"
         top = Profile(self.top_package, profile_name)
         info = {
             "requires": top.includedeps,
@@ -209,7 +211,7 @@ class Workspace:
             info["provides"].append("linker-script")
 
         if top.objs:
-            self.build(arch, "release", no_bin=True)
+            self.build(arch, LIB_PROFILE, no_bin=True)
             libname = f"lib{top.id.name}.a"
             symbols = parse_armap(self.builddir(profile_name)/"lib"/libname)
             info["provides"].append(libname)

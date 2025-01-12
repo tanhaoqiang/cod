@@ -162,3 +162,11 @@ class TestAssembly(Case):
 
     def test_build(self):
         self.assertCodOk("bin", "build")
+
+class TestLibProfile(Case):
+    directory = 'lib-profile'
+
+    def test_build(self):
+        self.assertCodOk("lib", "package")
+        self.assertCodFail("lib", "build")
+        self.assertCodOk("bin", "build")
