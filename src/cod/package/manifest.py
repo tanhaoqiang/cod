@@ -3,7 +3,7 @@
 
 from collections import defaultdict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 def normalize_flags(flags):
     if isinstance(flags, str):
@@ -14,20 +14,26 @@ def normalize_flags(flags):
         return []
 
 class BuildFlags(BaseModel):
+    class Config:
+        populate_by_name = True
+
     cflags: str | list[str] | None = None
     ldflags: str | list[str] | None = None
+    linker_script: str | None = Field(alias="linker-script", default=None)
 
     def normalize(self):
         return BuildFlags(
             cflags = normalize_flags(self.cflags),
-            ldflags = normalize_flags(self.ldflags))
+            ldflags = normalize_flags(self.ldflags),
+            linker_script = self.linker_script)
 
     def __add__(self, other):
         a = self.normalize()
         b = other.normalize()
         return BuildFlags(
             cflags = a.cflags + b.cflags,
-            ldflags = a.ldflags + b.ldflags)
+            ldflags = a.ldflags + b.ldflags,
+            linker_script = other.linker_script or self.linker_script)
 
 class Package(BaseModel):
     name: str

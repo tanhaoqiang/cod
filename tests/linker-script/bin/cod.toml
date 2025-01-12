@@ -1,0 +1,12 @@
+[package]
+name = "bin"
+version = "1.0"
+
+[profile.debug.build]
+linker-script = "fail.ld"
+
+[profile.debug_noarch.build.noarch]
+linker-script = "fail.ld"
+
+[profile.debug_arch.build.aarch64]
+linker-script = "fail.ld"

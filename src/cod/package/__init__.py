@@ -142,15 +142,21 @@ class Profile:
             deps.update(get_include_deps(self.includedirs, f))
         return [f"<{h}>" for h in deps]
 
-    def write_build_flags(self, ninja):
-        flags = self.build_flags
-        ninja.variable('cflags', ['$cflags'] + flags.cflags)
-        ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
+    def write_flags(self, rootdir, ninja, flags):
+        if flags.cflags:
+            ninja.variable('cflags', ['$cflags'] + flags.cflags)
+        if flags.ldflags:
+            ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
+        if flags.linker_script:
+            script = (self.package.rootdir / flags.linker_script).relative_to(rootdir, walk_up=True).as_posix()
+            ninja.variable('linker-script-flags', f"-Wl,--script={script}")
+            ninja.variable('linker-script', script)
 
-    def write_build_export(self, ninja):
-        flags = self.export_flags
-        ninja.variable('cflags', ['$cflags'] + flags.cflags)
-        ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
+    def write_build_flags(self, rootdir, ninja):
+        self.write_flags(rootdir, ninja, self.build_flags)
+
+    def write_build_export(self, rootdir, ninja):
+        self.write_flags(rootdir, ninja, self.export_flags)
 
     def write_build_objs(self, rootdir, ninja, objs):
         result = []
@@ -164,7 +170,7 @@ class Profile:
 
     def write_build_lib(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
-            self.write_build_flags(ninja)
+            self.write_build_flags(rootdir, ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             objs = self.write_build_objs(rootdir, ninja, self.objs)
             libname = f"lib/lib{self.id.name}.a"
@@ -173,11 +179,11 @@ class Profile:
 
     def write_build_bin(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
-            self.write_build_flags(ninja)
+            self.write_build_flags(rootdir, ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             objs = self.write_build_objs(rootdir, ninja, self.bins)
             ninja.build(['lib/bin.a'], "ar", objs)
             for dst in self.bins:
                 src = "$basedir/" + dst.with_suffix(".o").as_posix()
                 bin = ('bin' / dst).as_posix()
-                ninja.build([bin], "ld", [src])
+                ninja.build([bin], "ld", [src], ['$linker-script'])

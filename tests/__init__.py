@@ -143,3 +143,16 @@ class TestI686Target(Case):
 
     def test_build(self):
         self.assertCodOk("lib", "build")
+
+class TestLinkerScript(Case):
+    directory = 'linker-script'
+
+    def test_build(self):
+        self.assertCodOk("bin", "build")
+        self.assertCodFail("bin", "build", "-p", "debug")
+        self.assertCodFail("bin", "build", "-p", "debug_noarch")
+        self.assertCodFail("bin", "build", "-p", "debug_arch", "-a", "aarch64")
+        self.assertCodOk("bin", "build", "-p", "debug_arch", "-a", "x86_64")
+        self.assertCodOk("lib", "package")
+        self.assertCodOk("bin", "install", "lib")
+        self.assertCodFail("bin", "build")

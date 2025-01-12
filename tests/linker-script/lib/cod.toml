@@ -1,0 +1,6 @@
+[package]
+name = "lib"
+version = "1.0"
+
+[export]
+linker-script = "fail.ld"

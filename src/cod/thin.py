@@ -32,7 +32,11 @@ def parse_symbols(f):
     n, = unpack("!I", content[0:4])
     assert content[-1] == 0
     offsets = [unpack("!I", content[4+i*4:8+i*4])[0] for i in range(n)]
-    names = content[4+n*4:].rstrip(b'\x00').split(b'\x00')
+    names = content[4+n*4:].rstrip(b'\x00')
+    if names:
+        names = names.split(b'\x00')
+    else:
+        names = []
     assert len(names) == n
     return [(name.decode(), offset) for name, offset in zip(names, offsets)]
 

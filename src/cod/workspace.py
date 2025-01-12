@@ -91,7 +91,9 @@ class Workspace:
             ninja.variable('ar', ["$zig", "ar"])
             ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"])
-            ninja.rule('ld', ["$cc", "$cflags", "$in", "$libs", "-o", "$out"])
+            ninja.variable('linker-script', 'linker-script')
+            ninja.build(['linker-script'], "phony")
+            ninja.rule('ld', ["$cc", "$cflags", "$ldflags", "$linker-script-flags", "$in", "$libs", "-o", "$out"])
 
             target = arch_to_target(arch)
             ninja.variable('cflags',  target + [f"-I{d.as_posix()}" for d in includedirs])
@@ -99,7 +101,7 @@ class Workspace:
             for package in packages:
                 lib_ninja = rootdir/str(package.id)/"export.ninja"
                 with NinjaWriter(lib_ninja) as subninja:
-                    package.write_build_export(subninja)
+                    package.write_build_export(rootdir, subninja)
                 ninja.include(lib_ninja.relative_to(rootdir))
 
             libs = []
@@ -200,6 +202,9 @@ class Workspace:
             "requires": top.includedeps,
             "provides": [f"<{h.as_posix()}>" for h in top.includefiles],
         }
+
+        if top.export_flags.linker_script:
+            info["provides"].append("linker-script")
 
         if top.objs:
             self.build(arch, "release", no_bin=True)
