@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from functools import cached_property
-import tomllib
 
 from ..repo import Repo
 from .manifest import Manifest
+from ..compat import tomllib
 
 def find_project_dir(pkg_dir):
     for p in pkg_dir.parents:

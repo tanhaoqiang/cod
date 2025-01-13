@@ -1,11 +1,7 @@
 # Copyright (c) 2024 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
-import sys
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
+from .compat import entry_points
 
 repo_plugins = entry_points(group=f'{__package__}.repos')
 

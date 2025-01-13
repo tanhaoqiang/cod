@@ -14,6 +14,7 @@ from .lock import Lock
 from .thin import parse_armap
 from .dep import get_symbol_deps
 from .ninja import NinjaWriter
+from .compat import relative_to
 
 def get_obj_defs(symbols):
     defs = {}
@@ -82,9 +83,7 @@ class Workspace:
 
         includedirs = []
         for package in packages:
-            includedirs.extend(
-                i.relative_to(rootdir, walk_up=True)
-                for i in package.includedirs)
+            includedirs.extend(relative_to(i, rootdir) for i in package.includedirs)
 
         with NinjaWriter(rootdir / "build.ninja") as ninja:
             ninja.variable('python', [sys.executable])
@@ -99,7 +98,7 @@ class Workspace:
             target = arch_to_target(arch)
             ninja.rule('ld', ["$zig", "cc"] + target + ["$cflags", "$ldflags", "$linker-script-flags", "$in", "$libs", "-o", "$out"], description="LD $out")
 
-            ninja.variable('cflags', ["-ffreestanding", "-nostdinc", "-nostdlib", "-fno-builtin"] + [f"-I{d.as_posix()}" for d in includedirs])
+            ninja.variable('cflags', ["-ffreestanding", "-nostdinc", "-nostdlib", "-fno-builtin"] + [f"-I{d}" for d in includedirs])
 
             for package in packages:
                 lib_ninja = rootdir/str(package.id)/"export.ninja"

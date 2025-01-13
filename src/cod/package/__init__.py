@@ -3,11 +3,11 @@
 
 from dataclasses import dataclass
 from functools import cached_property
-import tomllib
 
 from ..dep import get_include_deps
 from . import manifest
 from ..ninja import NinjaWriter
+from ..compat import relative_to, tomllib
 
 @dataclass(frozen=True)
 class EVR:
@@ -152,7 +152,7 @@ class Profile:
         if flags.ldflags:
             ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
         if flags.linker_script:
-            script = (self.package.rootdir / flags.linker_script).relative_to(rootdir, walk_up=True).as_posix()
+            script = relative_to((self.package.rootdir/flags.linker_script), rootdir)
             ninja.variable('linker-script-flags', f"-Wl,--script={script}")
             ninja.variable('linker-script', script)
 
@@ -167,11 +167,12 @@ class Profile:
         keys = list(sorted(objs))
         for key in keys:
             dst = "$basedir/" + key.with_suffix(".o").as_posix()
-            src = objs[key].relative_to(rootdir, walk_up=True)
+            src = objs[key]
+            srcpath = relative_to(src, rootdir)
             if src.suffix == '.c':
-                ninja.build([dst], "cc", [src.as_posix()])
+                ninja.build([dst], "cc", [srcpath])
             elif src.suffix == '.S':
-                ninja.build([dst], "as", [src.as_posix()])
+                ninja.build([dst], "as", [srcpath])
             else:
                 assert False, f"{src.suffix} file not supported"
             result.append(dst)
