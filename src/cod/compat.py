@@ -3,6 +3,11 @@
 
 import sys
 
+if sys.version_info < (3, 8):
+    from backports.cached_property import cached_property
+else:
+    from functools import cached_property
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:

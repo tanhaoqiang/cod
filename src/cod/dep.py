@@ -21,10 +21,10 @@ def iter_lines(s):
     if full:
         yield full
 
-def get_include_deps(includedirs, f):
-    argv = [sys.executable, "-mziglang", "clang", "-nostdinc", "-MM", "-MG"]
+def get_include_deps(includedirs, f, arch):
+    argv = [sys.executable, "-mziglang", "clang", f"--target={arch}-unknown-unknown", "-nostdinc", "-MM", "-MG"]
     argv.extend(f"-I{i}" for i in includedirs)
-    s = check_output(argv + [f], cwd = f.parent).decode()
+    s = check_output(argv + [f.name], cwd = f.parent).decode()
 
     for line in iter_lines(s):
         parts = shlex.split(line, comments=True)
@@ -38,6 +38,6 @@ def get_include_deps(includedirs, f):
 def get_symbol_deps(workdir, target, obj):
     script = Path(__file__).parent / "always-fail.ld"
     proc = run(
-        [sys.executable, "-mziglang", "cc"] + target + [f"-Wl,--script={script}", obj],
+        [sys.executable, "-mziglang", "cc"] + target + [f"-Wl,--script={script}", str(obj)],
         stderr=PIPE, text=True, cwd=workdir)
     return re.findall(r': error: undefined symbol: (\S+)$', proc.stderr, re.MULTILINE)

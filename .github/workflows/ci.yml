@@ -12,31 +12,53 @@ on:
 jobs:
   ci:
     strategy:
+      fail-fast: false
       matrix:
-        os:
-        - ubuntu-latest
-        - windows-latest
-        - macos-13
-        - macos-latest
+        platform:
+        - os: ubuntu-latest
+          arch: amd64
+          tag: slim
+        - os: ubuntu-24.04-arm
+          arch: arm64/v8
+          tag: slim
+        - os: ubuntu-latest
+          arch: amd64
+          tag: alpine
+        - os: ubuntu-24.04-arm
+          arch: arm64/v8
+          tag: alpine
+        - os: windows-latest
+          arch: x64
+        - os: macos-13
+          arch: x64
+        - os: macos-latest
+          arch: arm64
         python:
+        - "3.7"
+        - "3.8"
         - "3.9"
         - "3.10"
         - "3.11"
         - "3.12"
         - "3.13"
+        exclude:
+        - {platform: {os: macos-latest}, python: "3.7"}
+        - {platform: {os: macos-latest}, python: "3.8"}
 
-    runs-on: '${{ matrix.os }}'
+    runs-on: '${{ matrix.platform.os }}'
 
     steps:
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '${{ matrix.python }}'
-
-    - run: pip install -i "https://tanhaoqiang.github.io/simple" solv
-
     - name: Checkout
       uses: actions/checkout@v4
 
-    - run: pip install -e .
+    - run: docker run -v "${{ github.workspace }}:/workspace" -w /workspace --platform "linux/${{ matrix.platform.arch }}" "python:${{ matrix.python }}-${{ matrix.platform.tag }}" python3 .github/workflows/test.py
+      if: runner.os == 'Linux'
 
-    - run: python -munittest -v tests
+    - uses: actions/setup-python@v5
+      if: runner.os != 'Linux'
+      with:
+        python-version: '${{ matrix.python }}'
+        architecture: '${{ matrix.platform.arch }}'
+
+    - run: python .github/workflows/test.py
+      if: runner.os != 'Linux'

@@ -1,11 +1,9 @@
 # Copyright (c) 2025 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
-from functools import cached_property
-
 from ..repo import Repo
 from .manifest import Manifest
-from ..compat import tomllib
+from ..compat import tomllib, cached_property
 
 def find_project_dir(pkg_dir):
     for p in pkg_dir.parents:

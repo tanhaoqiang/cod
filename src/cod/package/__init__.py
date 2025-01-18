@@ -2,12 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 from dataclasses import dataclass
-from functools import cached_property
 
 from ..dep import get_include_deps
 from . import manifest
 from ..ninja import NinjaWriter
-from ..compat import relative_to, tomllib
+from ..compat import relative_to, tomllib, cached_property
 
 @dataclass(frozen=True)
 class EVR:
@@ -137,11 +136,11 @@ class Profile:
     def includedeps(self):
         deps = set()
         for f in self.includefiles.values():
-            deps.update(get_include_deps(self.includedirs, f))
+            deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         for f in self.objs.values():
-            deps.update(get_include_deps(self.includedirs, f))
+            deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         for f in self.bins.values():
-            deps.update(get_include_deps(self.includedirs, f))
+            deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         return [f"<{h}>" for h in deps]
 
     def write_flags(self, rootdir, ninja, flags):

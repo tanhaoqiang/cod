@@ -1,10 +1,10 @@
-# Copyright (c) 2024 tanhaoqiang
+# Copyright (c) 2024-2025 tanhaoqiang
 # SPDX-License-Identifier: AGPL-3.0-only
 
-from functools import cached_property
 import json
 
 from .repo import Repo
+from .compat import cached_property
 
 class LocalRepo(Repo):
 

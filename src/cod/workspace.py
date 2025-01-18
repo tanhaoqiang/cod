@@ -3,7 +3,6 @@
 
 import sys
 from pathlib import Path
-from functools import cached_property
 import json
 from subprocess import check_call
 from platform import system, machine
@@ -14,7 +13,7 @@ from .lock import Lock
 from .thin import parse_armap
 from .dep import get_symbol_deps
 from .ninja import NinjaWriter
-from .compat import relative_to
+from .compat import relative_to, cached_property
 
 def get_obj_defs(symbols):
     defs = {}

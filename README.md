@@ -8,21 +8,15 @@ Hobby kernel development is so miserable that everyone has to invent their own w
 - Easy to Install
 - Install dependency automatically
 
-For example
-
-```c
-#include <awesome.h>
-
-void kernel_main() {
-  awesome_main();
-}
-```
-
-At compiling, `cod` will try to find a package provides file `awesome.h`.
-
-At linking, `cod` will try to find a package provides symbol `awesome_main`.
-
-Now, let's reinvent the wheel, once and for all.
+| CPython           | 3.6 | 3.7                | 3.8                | 3.9                | 3.10               | 3.11               | 3.12               | 3.13               |
+| --                | --  | --                 | --                 | --                 | --                 | --                 | --                 | --                 |
+| Windows AMD64     |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| macOS arm64       |     |                    |                    | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| macOS x86_64      |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| manylinux x86_64  |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| manylinux aarch64 |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| musllinux x86_64  |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| musllinux aarch64 |     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ## Installation
 
