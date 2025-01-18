@@ -21,12 +21,14 @@ class BuildFlags(BaseModel):
     sflags: Optional[Union[str, List[str]]] = None
     ldflags: Optional[Union[str, List[str]]] = None
     linker_script: Optional[str] = Field(alias="linker-script", default=None)
+    format: Optional[str] = None
 
     def normalize(self):
         return BuildFlags(
             cflags = normalize_flags(self.cflags),
             sflags = normalize_flags(self.sflags),
             ldflags = normalize_flags(self.ldflags),
+            format = self.format,
             linker_script = self.linker_script)
 
     def __add__(self, other):
@@ -36,6 +38,7 @@ class BuildFlags(BaseModel):
             cflags = a.cflags + b.cflags,
             sflags = a.sflags + b.sflags,
             ldflags = a.ldflags + b.ldflags,
+            format = other.format or self.format,
             linker_script = other.linker_script or self.linker_script)
 
 class Package(BaseModel):

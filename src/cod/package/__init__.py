@@ -110,7 +110,7 @@ class Profile:
             return self.package.rootdir / "arch" / self.arch
 
     @cached_property
-    def bins(self):
+    def elfs(self):
         d = find_files(self.package.rootdir / "bin", "*.c", ".elf")
         if self.archdir:
             d.update(find_files(self.archdir / "bin", "*.c", ".elf"))
@@ -139,7 +139,7 @@ class Profile:
             deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         for f in self.objs.values():
             deps.update(get_include_deps(self.includedirs, f, self.build_arch))
-        for f in self.bins.values():
+        for f in self.elfs.values():
             deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         return [f"<{h}>" for h in deps]
 
@@ -190,9 +190,12 @@ class Profile:
         with NinjaWriter(rootdir / lib_ninja) as ninja:
             self.write_build_flags(rootdir, ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
-            objs = self.write_build_objs(rootdir, ninja, self.bins)
+            objs = self.write_build_objs(rootdir, ninja, self.elfs)
             ninja.build(['lib/bin.a'], "ar", objs)
-            for dst in self.bins:
+            for dst in self.elfs:
                 src = "$basedir/" + dst.with_suffix(".o").as_posix()
-                bin = ('bin' / dst).as_posix()
-                ninja.build([bin], "ld", [src], ['libs', '$linker-script'])
+                elf = ('bin' / dst).as_posix()
+                ninja.build([elf], "ld", [src], ['libs', '$linker-script'])
+                if self.build_flags.format == 'binary':
+                    bin = ('bin' / dst.with_suffix(".bin")).as_posix()
+                    ninja.build([bin], "objcopy", [elf])

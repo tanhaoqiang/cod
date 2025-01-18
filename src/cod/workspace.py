@@ -92,6 +92,7 @@ class Workspace:
             ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="CC $out")
             ninja.rule('as', ["$cc", "$cflags", "$sflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="AS $out")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"], description="AR $out")
+            ninja.rule('objcopy', ["$python", "-mcod.objcopy", "$out", "$in"], description="OBJCOPY $out")
             ninja.variable('linker-script', 'linker-script')
             ninja.build(['linker-script'], "phony")
             target = arch_to_target(arch)
@@ -115,7 +116,7 @@ class Workspace:
             ninja.build(['libs'], "phony", libs)
             ninja.variable('libs', libs)
 
-            if top.bins:
+            if top.elfs:
                 lib_ninja = (rootdir/"obj"/"lib.ninja").relative_to(rootdir)
                 top.write_build_bin(rootdir, lib_ninja)
                 ninja.subninja(lib_ninja.as_posix())
@@ -139,7 +140,7 @@ class Workspace:
         rootdir = self.builddir(profile_name)
 
         libs = self.write_build(profile_name, top)
-        if no_bin or not top.bins:
+        if no_bin or not top.elfs:
             if libs:
                 check_call([sys.executable, "-mninja"] + libs, cwd=rootdir)
             return
