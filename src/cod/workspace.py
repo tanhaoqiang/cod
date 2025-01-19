@@ -105,10 +105,12 @@ class Workspace:
 
             ninja.variable('cflags', ["-ffreestanding", "-nostdinc", "-nostdlib", "-fno-builtin"] + [f"-I{d}" for d in includedirs])
 
+            self.project.write_build_variables(ninja)
+
             for package in packages:
                 lib_ninja = rootdir/str(package.id)/"export.ninja"
                 with NinjaWriter(lib_ninja) as subninja:
-                    package.write_build_export(rootdir, subninja)
+                    package.write_export_variables(rootdir, subninja)
                 ninja.include(lib_ninja.relative_to(rootdir))
 
             libs = []

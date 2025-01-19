@@ -192,3 +192,9 @@ class TestObjconv(Case):
         with (self.rootdir / "bin/.cod/dev.x86_64/bin/oc.bin").open("rb") as f:
             bin64 = f.read()
         self.assertEqual(bin32, bin64)
+
+class TestProjectFlags(Case):
+    directory = 'project-flags'
+
+    def test_build(self):
+        self.assertCodFail("lib", "build")

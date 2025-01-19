@@ -3,10 +3,11 @@
 
 from dataclasses import dataclass
 
-from ..dep import get_include_deps
+from .dep import get_include_deps
 from . import manifest
-from ..ninja import NinjaWriter
-from ..compat import relative_to, tomllib, cached_property
+from .manifest import write_compiler_variables
+from .ninja import NinjaWriter
+from .compat import relative_to, tomllib, cached_property
 
 @dataclass(frozen=True)
 class EVR:
@@ -60,7 +61,7 @@ class Package:
 
         with (self.rootdir / "cod.toml").open("rb") as f:
             toml = tomllib.load(f)
-        self.manifest = manifest.Manifest.model_validate(toml)
+        self.manifest = manifest.PackageManifest.model_validate(toml)
         package = self.manifest.package
         self.name = package.name
         self.evr = EVR(package.epoch, package.version, package.release)
@@ -161,13 +162,7 @@ class Profile:
         need = {p[1:-1] for p in provides if p.startswith("<") and p.endswith(">")}
         assert have == need, f"package {self.id} header list conflict, expected {need}, got {have}"
 
-    def write_compiler_flags(self, rootdir, ninja, flags, suffix=''):
-        if flags.cflags:
-            ninja.variable(f'cflags{suffix}', [f'$cflags{suffix}'] + flags.cflags)
-        if flags.sflags:
-            ninja.variable(f'sflags{suffix}', [f'$sflags{suffix}'] + flags.sflags)
-
-    def write_linker_flags(self, rootdir, ninja, flags):
+    def write_linker_variables(self, rootdir, ninja, flags):
         if flags.ldflags:
             ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
         if flags.linker_script:
@@ -175,22 +170,13 @@ class Profile:
             ninja.variable('linker-script-flags', f"-Wl,--script={script}")
             ninja.variable('linker-script', script)
 
-    def write_build_flags(self, rootdir, ninja):
-        self.write_linker_flags(rootdir, ninja, self.build_flags)
-        self.write_compiler_flags(rootdir, ninja, self.build_flags)
+    def write_build_variables(self, rootdir, ninja):
+        self.write_linker_variables(rootdir, ninja, self.build_flags)
+        write_compiler_variables(ninja, self.build_flags)
 
-    def write_build_export(self, rootdir, ninja):
-        self.write_linker_flags(rootdir, ninja, self.export_flags)
-
-        flags = self.package.manifest.export
-        if isinstance(flags, manifest.BuildFlags):
-            self.write_compiler_flags(rootdir, ninja, flags.normalize())
-        else:
-            for k, v in flags.items():
-                if k == 'noarch':
-                    self.write_compiler_flags(rootdir, ninja, v.normalize())
-                else:
-                    self.write_compiler_flags(rootdir, ninja, v.normalize(), f"-{k}")
+    def write_export_variables(self, rootdir, ninja):
+        self.write_linker_variables(rootdir, ninja, self.export_flags)
+        write_compiler_variables(ninja, self.package.manifest.export)
 
     def write_build_objs(self, rootdir, ninja, objs):
         ninja.variable('arch', self.build_arch)
@@ -221,7 +207,7 @@ class Profile:
 
     def write_build_lib(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
-            self.write_build_flags(rootdir, ninja)
+            self.write_build_variables(rootdir, ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             objs = self.write_build_objs(rootdir, ninja, self.objs)
             libname = f"lib/lib{self.id.name}.a"
@@ -230,7 +216,7 @@ class Profile:
 
     def write_build_bin(self, rootdir, lib_ninja):
         with NinjaWriter(rootdir / lib_ninja) as ninja:
-            self.write_build_flags(rootdir, ninja)
+            self.write_build_variables(rootdir, ninja)
             ninja.variable('basedir', lib_ninja.parent.as_posix())
             objs = self.write_build_objs(rootdir, ninja, self.elfs)
             ninja.build(['lib/bin.a'], "ar", objs)

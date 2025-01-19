@@ -51,8 +51,31 @@ class Package(BaseModel):
 class Profile(BaseModel):
     build: Union[Dict[str, BuildFlags], BuildFlags] = BuildFlags()
 
-class Manifest(BaseModel):
+class PackageManifest(BaseModel):
     package: Package
     export: Union[Dict[str, BuildFlags], BuildFlags] = BuildFlags()
     build: Union[Dict[str, BuildFlags], BuildFlags] = BuildFlags()
     profile: Dict[str, Profile] = {}
+
+class Project(BaseModel):
+    pass
+
+class ProjectManifest(BaseModel):
+    project: Project
+    build: Union[Dict[str, BuildFlags], BuildFlags] = BuildFlags()
+    repo: Dict[str, dict] = {}
+
+def write_compiler_variables(ninja, flags, suffix=''):
+    if isinstance(flags, dict):
+        for k, v in flags.items():
+            if k == 'noarch':
+                write_compiler_variables(ninja, v)
+            else:
+                write_compiler_variables(ninja, v, f"-{k}")
+        return
+
+    flags = flags.normalize()
+    if flags.cflags:
+        ninja.variable(f'cflags{suffix}', [f'$cflags{suffix}'] + flags.cflags)
+    if flags.sflags:
+        ninja.variable(f'sflags{suffix}', [f'$sflags{suffix}'] + flags.sflags)
