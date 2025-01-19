@@ -34,7 +34,6 @@ build-backend = "setuptools.build_meta"
 Homepage = "https://github.com/tanhaoqiang/cod"
 
 [project.entry-points."cod.repos"]
-local = "cod.local_repo:LocalRepo"
 
 [project.scripts]
 cod = "cod:main"

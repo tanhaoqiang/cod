@@ -171,6 +171,9 @@ class Profile:
             ninja.variable('linker-script', script)
 
     def write_build_variables(self, rootdir, ninja):
+        if self.build_arch != self.top_arch:
+            ninja.variable('arch', self.build_arch)
+            ninja.variable('cc', ["$clang", "--target=${arch}-unknown-unknown"])
         self.write_linker_variables(rootdir, ninja, self.build_flags)
         write_compiler_variables(ninja, self.build_flags)
 
@@ -179,7 +182,6 @@ class Profile:
         write_compiler_variables(ninja, self.package.manifest.export)
 
     def write_build_objs(self, rootdir, ninja, objs):
-        ninja.variable('arch', self.build_arch)
         ninja.variable('cflags', ['$cflags', f'$cflags-{self.build_arch}'])
         ninja.variable('sflags', ['$sflags', f'$sflags-{self.build_arch}'])
 

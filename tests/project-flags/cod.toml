@@ -2,7 +2,3 @@
 
 [build]
 cflags = "-Werror"
-
-[repo.test]
-type = "local"
-path = "."

@@ -4,6 +4,7 @@
 import unittest
 from pathlib import Path
 from subprocess import call
+from shutil import rmtree
 
 class Case(unittest.TestCase):
 
@@ -198,3 +199,15 @@ class TestProjectFlags(Case):
 
     def test_build(self):
         self.assertCodFail("lib", "build")
+
+class TestProjectLocalRepo(Case):
+    directory = 'project-local-repo'
+
+    def test_build(self):
+        self.assertCodOk("lib", "package")
+        self.assertCodOk("bin", "build")
+
+        rmtree(self.rootdir / "lib" / ".cod")
+        rmtree(self.rootdir / "bin" / ".cod")
+
+        self.assertCodOk("bin", "build")
