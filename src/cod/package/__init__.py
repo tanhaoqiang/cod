@@ -75,15 +75,26 @@ def get_build_flags(build, arch):
     default = manifest.BuildFlags()
     return build.get('noarch', default) + build.get(arch, default)
 
+def check_arch(top_arch, pkg_arch):
+    if top_arch == pkg_arch:
+        return
+    elif top_arch == 'x86_64':
+        if pkg_arch in ("i386", "i486", "i586", "i686"):
+            return
+    assert False, f"build arch mismatch {top_arch} {pkg_arch}"
+
 class Profile:
 
-    def __init__(self, package, profile_name):
+    def __init__(self, package, build_arch, profile_name):
         self.package = package
         profile_name, arch = profile_name.rsplit('.', 1)
-        self.build_arch = arch
+        self.top_arch = build_arch
         if package.arch is None:
             arch = 'noarch'
         self.arch = arch
+        self.build_arch = build_arch if arch == 'noarch' else arch
+        check_arch(self.top_arch, self.build_arch)
+
         self.manifest = self.package.manifest.profile.get(profile_name, manifest.Profile())
         self.id = PackageId(package.name, str(package.evr), arch)
 
@@ -102,7 +113,7 @@ class Profile:
 
     @cached_property
     def export_flags(self):
-        return get_build_flags(self.package.manifest.export, self.build_arch)
+        return get_build_flags(self.package.manifest.export, self.top_arch)
 
     @cached_property
     def archdir(self):
@@ -112,8 +123,10 @@ class Profile:
     @cached_property
     def elfs(self):
         d = find_files(self.package.rootdir / "bin", "*.c", ".elf")
+        d.update(find_files(self.package.rootdir / "bin", "*.S", ".elf"))
         if self.archdir:
             d.update(find_files(self.archdir / "bin", "*.c", ".elf"))
+            d.update(find_files(self.archdir / "bin", "*.S", ".elf"))
         return d
 
     @cached_property
@@ -143,11 +156,13 @@ class Profile:
             deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         return [f"<{h}>" for h in deps]
 
-    def write_flags(self, rootdir, ninja, flags):
+    def write_compiler_flags(self, rootdir, ninja, flags, suffix=''):
         if flags.cflags:
-            ninja.variable('cflags', ['$cflags'] + flags.cflags)
+            ninja.variable(f'cflags{suffix}', [f'$cflags{suffix}'] + flags.cflags)
         if flags.sflags:
-            ninja.variable('sflags', ['$sflags'] + flags.sflags)
+            ninja.variable(f'sflags{suffix}', [f'$sflags{suffix}'] + flags.sflags)
+
+    def write_linker_flags(self, rootdir, ninja, flags):
         if flags.ldflags:
             ninja.variable('ldflags', ['$ldflags'] + flags.ldflags)
         if flags.linker_script:
@@ -156,16 +171,39 @@ class Profile:
             ninja.variable('linker-script', script)
 
     def write_build_flags(self, rootdir, ninja):
-        self.write_flags(rootdir, ninja, self.build_flags)
+        self.write_linker_flags(rootdir, ninja, self.build_flags)
+        self.write_compiler_flags(rootdir, ninja, self.build_flags)
 
     def write_build_export(self, rootdir, ninja):
-        self.write_flags(rootdir, ninja, self.export_flags)
+        self.write_linker_flags(rootdir, ninja, self.export_flags)
+
+        flags = self.package.manifest.export
+        if isinstance(flags, manifest.BuildFlags):
+            self.write_compiler_flags(rootdir, ninja, flags.normalize())
+        else:
+            for k, v in flags.items():
+                if k == 'noarch':
+                    self.write_compiler_flags(rootdir, ninja, v.normalize())
+                else:
+                    self.write_compiler_flags(rootdir, ninja, v.normalize(), f"-{k}")
 
     def write_build_objs(self, rootdir, ninja, objs):
+        ninja.variable('arch', self.build_arch)
+        ninja.variable('cflags', ['$cflags', f'$cflags-{self.build_arch}'])
+        ninja.variable('sflags', ['$sflags', f'$sflags-{self.build_arch}'])
+
         result = []
         keys = list(sorted(objs))
         for key in keys:
-            dst = "$basedir/" + key.with_suffix(".o").as_posix()
+            if self.build_arch != self.top_arch:
+                out = "$basedir/" + key.with_suffix(".o").as_posix()
+                dst = "$basedir/" + key.with_suffix(".o32").as_posix()
+                assert self.top_arch == 'x86_64'
+                ninja.build([out], "objconv", [dst])
+                result.append(out)
+            else:
+                dst = "$basedir/" + key.with_suffix(".o").as_posix()
+                result.append(dst)
             src = objs[key]
             srcpath = relative_to(src, rootdir)
             if src.suffix == '.c':
@@ -174,7 +212,6 @@ class Profile:
                 ninja.build([dst], "as", [srcpath])
             else:
                 assert False, f"{src.suffix} file not supported"
-            result.append(dst)
         return result
 
     def write_build_lib(self, rootdir, lib_ninja):

@@ -1,0 +1,5 @@
+[project]
+
+[repo.test]
+type = "local"
+path = "."

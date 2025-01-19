@@ -1,0 +1,6 @@
+[package]
+name = "bin"
+version = "1.0"
+
+[build]
+format = "binary"

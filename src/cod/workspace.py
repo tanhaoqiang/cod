@@ -74,7 +74,7 @@ class Workspace:
 
         packages = [top]
         for pkgid, name in self.lock[profile_name]:
-            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), f'{LIB_PROFILE}.{arch}'))
+            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), arch, f'{LIB_PROFILE}.{pkgid.rsplit(".",1)[1]}'))
         packages.sort()
 
         rootdir = self.builddir(profile_name)
@@ -87,12 +87,13 @@ class Workspace:
         with NinjaWriter(rootdir / "build.ninja") as ninja:
             ninja.variable('python', [sys.executable])
             ninja.variable('zig', ["$python", "-mziglang"])
-            ninja.variable('cc', ["$zig", "clang", f"--target={arch}-unknown-unknown"])
+            ninja.variable('cc', ["$zig", "clang"])
             ninja.variable('ar', ["$zig", "ar"])
-            ninja.rule('cc', ["$cc", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="CC $out")
-            ninja.rule('as', ["$cc", "$cflags", "$sflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="AS $out")
+            ninja.rule('cc', ["$cc", "--target=${arch}-unknown-unknown", "$cflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="CC $out")
+            ninja.rule('as', ["$cc", "--target=${arch}-unknown-unknown", "$cflags", "$sflags", "-MMD", "-MF", "$out.d", "-c", "$in", "-o", "$out"], depfile="$out.d", description="AS $out")
             ninja.rule('ar', ["$python", "-mcod.ar", "$out", "$in"], description="AR $out")
             ninja.rule('objcopy', ["$python", "-mcod.objcopy", "$out", "$in"], description="OBJCOPY $out")
+            ninja.rule('objconv', ["$python", "-mcod.objconv", "$out", "$in"], description="OBJCONV $out")
             ninja.variable('linker-script', 'linker-script')
             ninja.build(['linker-script'], "phony")
             target = arch_to_target(arch)
@@ -131,7 +132,7 @@ class Workspace:
         assert arch in (self.top_package.arch or (arch,))
 
         profile_name = f'{profile_name}.{arch}'
-        top = Profile(self.top_package, profile_name)
+        top = Profile(self.top_package, arch, profile_name)
 
         if top.includedeps:
             with self.lock(profile_name):
@@ -200,14 +201,14 @@ class Workspace:
         assert arch in (self.top_package.arch or (arch,))
 
         profile_name = f"{LIB_PROFILE}.{arch}"
-        top = Profile(self.top_package, profile_name)
+        top = Profile(self.top_package, arch, profile_name)
         info = {
             "requires": top.includedeps,
             "provides": [f"<{h.as_posix()}>" for h in top.includefiles],
         }
 
         if top.export_flags.linker_script:
-            info["provides"].append("linker-script")
+            info["provides"].append("{linker-script}")
 
         if top.objs:
             self.build(arch, LIB_PROFILE, no_bin=True)

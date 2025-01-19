@@ -170,3 +170,25 @@ class TestLibProfile(Case):
         self.assertCodOk("lib", "package")
         self.assertCodFail("lib", "build")
         self.assertCodOk("bin", "build")
+
+class TestObjcopy(Case):
+    directory = 'objcopy'
+
+    def test_build(self):
+        for path in self.rootdir.glob("bin/.cod/*/bin/oc.bin"):
+            path.unlink()
+        self.assertCodOk("bin", "build")
+        self.assertNotEqual(list(self.rootdir.glob("bin/.cod/*/bin/oc.bin")), [])
+
+class TestObjconv(Case):
+    directory = 'objconv'
+
+    def test_build(self):
+        self.assertCodOk("lib", "package")
+        self.assertCodOk("bin", "build", "-a", "i686")
+        self.assertCodOk("bin", "build", "-a", "x86_64")
+        with (self.rootdir / "bin/.cod/dev.i686/bin/oc.bin").open("rb") as f:
+            bin32 = f.read()
+        with (self.rootdir / "bin/.cod/dev.x86_64/bin/oc.bin").open("rb") as f:
+            bin64 = f.read()
+        self.assertEqual(bin32, bin64)
