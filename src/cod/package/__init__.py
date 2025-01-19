@@ -156,6 +156,11 @@ class Profile:
             deps.update(get_include_deps(self.includedirs, f, self.build_arch))
         return [f"<{h}>" for h in deps]
 
+    def validate_headers(self, provides):
+        have = {key.as_posix() for key in self.includefiles}
+        need = {p[1:-1] for p in provides if p.startswith("<") and p.endswith(">")}
+        assert have == need, f"package {self.id} header list conflict, expected {need}, got {have}"
+
     def write_compiler_flags(self, rootdir, ninja, flags, suffix=''):
         if flags.cflags:
             ninja.variable(f'cflags{suffix}', [f'$cflags{suffix}'] + flags.cflags)

@@ -75,7 +75,10 @@ class Workspace:
 
         packages = [top]
         for pkgid, name in self.lock[profile_name]:
-            packages.append(Profile(Package(self.project.repos[name].get_path(pkgid)), arch, f'{LIB_PROFILE}.{pkgid.rsplit(".",1)[1]}'))
+            repo = self.project.repos[name]
+            package = Profile(Package(repo.get_path(pkgid)), arch, f'{LIB_PROFILE}.{pkgid.rsplit(".",1)[1]}')
+            package.validate_headers(repo.get_info(pkgid).get('provides',[]))
+            packages.append(package)
         packages.sort()
 
         rootdir = self.builddir(profile_name)
