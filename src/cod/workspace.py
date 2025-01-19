@@ -14,6 +14,7 @@ from .thin import parse_armap
 from .dep import get_symbol_deps
 from .ninja import NinjaWriter
 from .compat import relative_to, cached_property
+from .util import update_file
 
 def get_obj_defs(symbols):
     defs = {}
@@ -203,7 +204,7 @@ class Workspace:
         profile_name = f"{LIB_PROFILE}.{arch}"
         top = Profile(self.top_package, arch, profile_name)
         info = {
-            "requires": top.includedeps,
+            "requires": list(top.includedeps),
             "provides": [f"<{h.as_posix()}>" for h in top.includefiles],
         }
 
@@ -217,6 +218,7 @@ class Workspace:
             info["provides"].append(libname)
             info["provides"].extend(f"({s})" for s, _ in symbols)
 
-        self.workdir.mkdir(parents=True, exist_ok=True)
-        with (self.workdir / f"{top.id}.cod").open("w") as f:
-            json.dump(info, f)
+        info["requires"].sort()
+        info["provides"].sort()
+
+        update_file(self.workdir / f"{top.id}.cod", json.dumps(info, sort_keys=True))

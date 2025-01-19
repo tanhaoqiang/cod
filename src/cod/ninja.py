@@ -5,6 +5,8 @@ from io import StringIO
 
 from ninja.ninja_syntax import Writer
 
+from .util import update_file
+
 class NinjaWriter:
 
     def __init__(self, path):
@@ -18,18 +20,4 @@ class NinjaWriter:
         if exc_type is not None:
             return
 
-        new = self._writer.output.getvalue()
-
-        try:
-            f = self.path.open("r")
-        except FileNotFoundError:
-            pass
-        else:
-            with f:
-                old = f.read()
-            if old == new:
-                return
-
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("w") as f:
-            f.write(new)
+        update_file(self.path, self._writer.output.getvalue())
